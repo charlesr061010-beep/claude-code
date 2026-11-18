@@ -175,15 +175,23 @@
   // ------------------------------------------------------------------
   var PROMPT_INDEX = {};
   var SEARCH = [];
+  var ALIAS_SEARCH = [];
+  var LAST_ALIAS = {};   // pid -> nickname that matched the latest search
   var answerCache = {};
 
   function indexData() {
     D.prompts.forEach(function (p, i) { PROMPT_INDEX[p.id] = i; });
-    SEARCH = D.players.map(function (p) {
-      var n = norm(p[0]);
+    var entry = function (name, pid, alias) {
+      var n = norm(name);
       var toks = n.split(' ');
       var core = toks.filter(function (t) { return !/^(jr|sr|ii|iii|iv)$/.test(t); });
-      return { n: n, c: n.replace(/ /g, ''), toks: toks, last: core[core.length - 1] || '' };
+      return { n: n, c: n.replace(/ /g, ''), toks: toks, last: core[core.length - 1] || '', pid: pid, alias: alias };
+    };
+    SEARCH = D.players.map(function (p, i) { return entry(p[0], i, null); });
+    // Nicknames ("Big Papi", "Pudge") search like names but point at the player.
+    ALIAS_SEARCH = [];
+    Object.keys(D.aliases || {}).forEach(function (k) {
+      D.aliases[k].forEach(function (a) { ALIAS_SEARCH.push(entry(a, Number(k), a)); });
     });
   }
 
@@ -260,8 +268,11 @@
     var qc = q.replace(/ /g, '');
     var last = qt[qt.length - 1];
     var hits = [];
-    for (var i = 0; i < SEARCH.length; i++) {
-      var e = SEARCH[i];
+    var best = {};
+    LAST_ALIAS = {};
+    var pool = SEARCH.concat(ALIAS_SEARCH);
+    for (var ix = 0; ix < pool.length; ix++) {
+      var e = pool[ix], i = e.pid;
       var score = -1, exact = 0, all = true;
       for (var k = 0; k < qt.length && all; k++) {
         var tok = qt[k], found = false;
@@ -280,8 +291,12 @@
         if (e.n === q && e.toks.length > 1) score += 20;
         score += i < 100 ? 14 : i < 500 ? 10 : i < 2500 ? 5 : 0;
       } else if (qc.length >= 4 && e.c.indexOf(qc) >= 0) score = 20;
-      if (score >= 0) hits.push([score, i]);
+      if (score >= 0 && !(best[i] >= score)) {
+        best[i] = score;
+        if (e.alias) LAST_ALIAS[i] = e.alias; else delete LAST_ALIAS[i];
+      }
     }
+    Object.keys(best).forEach(function (k) { hits.push([best[k], Number(k)]); });
     hits.sort(function (a, b) { return b[0] - a[0] || a[1] - b[1]; });
     return hits.slice(0, 8).map(function (h) { return h[1]; });
   }
@@ -723,7 +738,7 @@
         return '<li role="option" id="opt-' + k + '" data-pid="' + pid + '" aria-selected="' + (k === sel) + '"' +
           (u ? ' class="used" aria-disabled="true"' : '') + '>' +
           '<span class="nm">' + esc(playerName(pid)) + '</span>' +
-          '<span class="meta">' + (u ? 'already used' : esc(playerMeta(pid))) + '</span></li>';
+          '<span class="meta">' + (u ? 'already used' : (LAST_ALIAS[pid] ? 'aka ' + esc(LAST_ALIAS[pid]) + ' · ' : '') + esc(playerMeta(pid))) + '</span></li>';
       }).join('');
       input.setAttribute('aria-expanded', 'true');
       input.setAttribute('aria-activedescendant', 'opt-' + sel);
@@ -764,6 +779,9 @@
       var n = SEARCH[i].n;
       if (n === q || n.replace(SUFFIX_RE, '') === bare) cands.push(i);
     }
+    ALIAS_SEARCH.forEach(function (e) {
+      if ((e.n === q || e.n.replace(SUFFIX_RE, '') === bare) && cands.indexOf(e.pid) < 0) cands.push(e.pid);
+    });
     var exact = cands.filter(function (i) { return SEARCH[i].n === q; });
     if (exact.length) cands = exact;
     if (!cands.length) return { err: 'No MLB player named “' + raw.trim() + '”. Check the spelling; the clock is still running.' };

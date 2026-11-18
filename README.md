@@ -28,7 +28,7 @@ Upper deck
 - **Hard mode:** no name suggestions; type the full name and press Enter. Misspellings aren't strikeouts, but the clock keeps running.
 - **Typed innings:** a few prompts would be answered by the suggestion list itself ("Last name starts with Q", "Made his debut in 2018"), so those innings are always typed, for everyone.
 - **Challenge links:** an Unlimited result includes a link that deals a friend the same seven prompts.
-- **Autocomplete** covers all 23,000+ players. It shows position and years, and Jr./Sr. are spelled out (Ken Griffey Jr. vs. Sr.).
+- **Autocomplete** covers all 23,000+ players. It shows position and years, Jr./Sr. are spelled out (Ken Griffey Jr. vs. Sr.), and it knows about 70 nicknames ("Big Papi", "Pudge", "Goose Gossage", "El Duque"), in typed answers too.
 - **After each inning** you see your answer's rank, every franchise the player suited up for (the prompt's teams in bold), the most common answers, and the deep cuts you could have used.
 - **Box score:** every valid answer for every prompt, filterable, plus a ballpark chart of your total distance and a shareable result.
 - **Past dailies** can be replayed from the archive, and a daily left unfinished at midnight waits there. Stats (streak, average, best, a chart of recent distances, results by tier) stay in your browser.
@@ -105,13 +105,14 @@ python3 tools/build_data.py            # writes data/moonshot-data.js
 python3 tools/build_data.py --report   # plus a calibration report
 ```
 
-Prompt templates, word lists, the icon and Too Cute lists, Jr./Sr. suffixes and the tier thresholds all live at the top of `tools/build_data.py`. Rebuilding changes the prompt set, which reshuffles the daily schedule, so rebuild between seasons rather than mid-season.
+Prompt templates, word lists, the icon and Too Cute lists, Jr./Sr. suffixes, nicknames and the tier thresholds all live at the top of `tools/build_data.py`. Rebuilding changes the prompt set, which reshuffles the daily schedule, so rebuild between seasons rather than mid-season.
 
 ### Data format
 
 `data/moonshot-data.js` sets `window.MOONSHOT_DATA`:
 
 - `players[i]`: `[name, firstSeason, lastSeason, position]`, sorted by fame (autocomplete uses the order as a tiebreak).
+- `aliases`: `{playerIndex: [nickname, ...]}` for search and typed answers.
 - `spans[i]`: a player's stints with today's 30 franchises, 5 characters each: the franchise index, then the first and last season as `year − 1800` in two base64url characters.
 - `prompts[]`: `{id, t: text, s: fine print, c: category, d: difficulty 1–3, tm: franchises, a: answers}`. `a` packs each answer as 3 base64url characters encoding `playerIndex × 8 + tier`, most common first.
 

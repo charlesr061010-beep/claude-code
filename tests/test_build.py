@@ -110,6 +110,12 @@ class Names(unittest.TestCase):
         P = {"a": fake_player("a", "Ronald Acuña", 2018, {"ATL": (2018, 2025)}, {"ATL": 800})}
         self.assertEqual(len(B.match_icon(P, "Ronald Acuna", 2018)), 1)
 
+    def test_parse_aliases(self):
+        got = B.parse_aliases("Rich Gossage:1972=Goose Gossage|Goose,\nDavid Ortiz:1997=Big Papi")
+        self.assertEqual(got, [("Rich Gossage", 1972, ["Goose Gossage", "Goose"]), ("David Ortiz", 1997, ["Big Papi"])])
+        for name, yr, names in B.parse_aliases(B.ALIASES):
+            self.assertTrue(names and 1871 <= yr <= 2026, name)
+
     def test_curated_lists_parse(self):
         for text in (B.ICONS_S, B.ICONS_A, B.TOO_CUTE_NAMES):
             for name, yr in B.parse_icons(text):
