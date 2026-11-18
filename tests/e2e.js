@@ -183,6 +183,34 @@ const ok = (cond, msg) => { if (!cond) fails.push(msg); };
   ok((await page.$$('#dlg-archive .arch')).length >= 1, 'archive lists games');
   await page.click('#dlg-archive button[value="close"]');
 
+  // --- stats chart + midnight rollover ---------------------------------------------
+  const rc = await browser.newContext({ viewport: { width: 900, height: 800 } });
+  const rp = await rc.newPage();
+  rp.on('pageerror', (e) => errors.push('rollover: ' + e.message));
+  await rp.clock.install({ time: new Date(2026, 10, 22, 23, 59, 0) }); // Daily #5, a minute to midnight
+  await rp.addInitScript(() => { try { localStorage.setItem('moonshot.seenHelp', 'true'); } catch (e) {} });
+  await rp.goto(BASE + 'index.html');
+  await rp.waitForSelector('#btn-start');
+  await rp.click('#btn-start');
+  await rp.waitForSelector('#btn-skip');
+  await rp.click('#btn-skip');
+  await rp.waitForSelector('#btn-next');
+  await rp.clock.fastForward('02:00');
+  await rp.reload();
+  await rp.waitForSelector('#btn-start');
+  const roll = await rp.evaluate(() => ({
+    daily: JSON.parse(localStorage.getItem('moonshot.daily')).num,
+    archive: (JSON.parse(localStorage.getItem('moonshot.archive') || '{}') || {}).num,
+  }));
+  ok(roll.daily === 6 && roll.archive === 5, 'an unfinished daily moves to the archive at midnight: ' + JSON.stringify(roll));
+  await rp.evaluate(() => localStorage.setItem('moonshot.history', JSON.stringify({ 1: { ft: 420, sq: '' }, 2: { ft: 0, sq: '' }, 3: { ft: 655, sq: '' } })));
+  await rp.click('#btn-stats');
+  await rp.waitForSelector('.hist .hit');
+  ok((await rp.$$('.hist .hit')).length === 3, 'history chart has one column per finished daily');
+  await rp.focus('.hist .hit');
+  ok(!(await rp.$eval('#chart-tip', (t) => t.hidden)), 'keyboard focus shows the chart tooltip');
+  await rc.close();
+
   // --- phone, dark -------------------------------------------------------------
   const m = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
   const mp = await m.newPage();

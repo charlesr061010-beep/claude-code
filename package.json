@@ -6,9 +6,9 @@
   "scripts": {
     "serve": "python3 -m http.server 8765",
     "build:data": "python3 tools/build_data.py",
-    "test:data": "python3 tests/test_data.py",
+    "test:data": "python3 tests/test_build.py && python3 tests/test_data.py",
     "test:e2e": "node tests/e2e.js http://localhost:8765/",
-    "test": "python3 tests/test_data.py && node tests/e2e.js http://localhost:8765/"
+    "test": "python3 tests/test_build.py && python3 tests/test_data.py && node tests/e2e.js http://localhost:8765/"
   },
   "devDependencies": {
     "playwright": "1.63.0"

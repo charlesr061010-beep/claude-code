@@ -429,6 +429,13 @@
     var key = num === todayNum() ? 'daily' : 'archive';
     var saved = load(key, null);
     if (saved && saved.num === num && validIds(saved.ids)) return saved;
+    // A daily left unfinished at midnight moves to the archive instead of vanishing.
+    if (key === 'daily' && saved && saved.num < num && validIds(saved.ids) && saved.inn && saved.inn.length &&
+        saved.phase !== 'final') {
+      saved.mode = 'archive';
+      save('archive', saved);
+      setTimeout(function () { toast('Yesterday\'s unfinished game is waiting in Past dailies.'); }, 400);
+    }
     var g = newGame(key === 'daily' ? 'daily' : 'archive', num, dailyIds(num));
     save(key, g);
     return g;
@@ -1085,6 +1092,87 @@
     }
   }
 
+  // Recent daily distances: one series, so no legend; the heading names it.
+  function historyRows() {
+    var hist = load('history', {});
+    return Object.keys(hist).map(Number)
+      .filter(function (n) { return hist[n] && !hist[n].archive; })
+      .sort(function (a, b) { return a - b; }).slice(-30)
+      .map(function (n) { return { n: n, ft: hist[n].ft, sq: hist[n].sq || '' }; });
+  }
+
+  function historyChart() {
+    var rows = historyRows();
+    if (!rows.length) return '<p class="fine">Finish a daily game and your distances will chart here.</p>';
+    var W = 480, H = 160, L = 34, R = 8, T = 12, B = 22;
+    var iw = W - L - R, ih = H - T - B;
+    var slot = iw / Math.max(rows.length, 10);
+    var bw = Math.max(3, slot - 2);                     // 2px gap between neighbors
+    var y = function (v) { return T + ih - (v / 700) * ih; };
+    var marks = '', hits = '', table = '';
+    rows.forEach(function (d, i) {
+      var x = L + i * slot + 1, top = y(d.ft), h = T + ih - top;
+      if (h > 0) {
+        var r = Math.min(4, bw / 2, h);                 // rounded data end, square at the baseline
+        marks += '<path class="hbar" d="M' + x + ',' + (T + ih) + 'V' + (top + r) + 'Q' + x + ',' + top + ' ' + (x + r) + ',' + top +
+          'H' + (x + bw - r) + 'Q' + (x + bw) + ',' + top + ' ' + (x + bw) + ',' + (top + r) + 'V' + (T + ih) + 'Z"/>';
+      } else {
+        marks += '<path class="hbar"/>';
+      }
+      hits += '<rect class="hit" role="img" tabindex="0" data-i="' + i + '" x="' + (L + i * slot) + '" y="' + T + '" width="' + slot +
+        '" height="' + ih + '" aria-label="Daily #' + d.n + ': ' + d.ft + ' feet"/>';
+      table += '<tr><td>#' + d.n + '</td><td>' + d.ft + '</td></tr>';
+    });
+    var fence = y(400);
+    var lastX = L + (rows.length - 1) * slot + 1 + bw;
+    var svg = '<svg class="hist" viewBox="0 0 ' + W + ' ' + H + '" role="group" aria-label="Distance in your recent daily games">' +
+      '<line class="hgrid" x1="' + L + '" x2="' + (W - R) + '" y1="' + fence + '" y2="' + fence + '"/>' +
+      '<text class="htick" x="' + (L - 6) + '" y="' + (fence + 4) + '" text-anchor="end">400</text>' +
+      '<text class="htick" x="' + (L - 6) + '" y="' + (T + 4) + '" text-anchor="end">700</text>' +
+      '<text class="htick" x="' + (L - 6) + '" y="' + (T + ih + 4) + '" text-anchor="end">0</text>' +
+      '<text class="htick" x="' + (W - R) + '" y="' + (fence - 5) + '" text-anchor="end">Fence</text>' +
+      marks +
+      '<line class="hbase" x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '"/>' +
+      '<text class="htick" x="' + (L + 1) + '" y="' + (H - 4) + '">#' + rows[0].n + '</text>' +
+      (rows.length > 1 ? '<text class="htick" x="' + lastX + '" y="' + (H - 4) + '" text-anchor="end">#' + rows[rows.length - 1].n + '</text>' : '') +
+      hits + '</svg>';
+    return '<div class="hist-wrap"><h3 class="hist-title">Distance, last ' +
+      (rows.length === 1 ? '1 daily' : rows.length + ' dailies') + ' (ft)</h3>' +
+      '<div class="hist-plot">' + svg + '<div class="chart-tip" id="chart-tip" hidden></div></div>' +
+      '<table class="sr-only"><caption>Distance by daily game</caption><thead><tr><th>Game</th><th>Feet</th></tr></thead><tbody>' +
+      table + '</tbody></table></div>';
+  }
+
+  function wireHistory() {
+    var tip = $('#chart-tip');
+    var plot = $('.hist-plot');
+    if (!tip || !plot) return;
+    var rows = historyRows();
+    var bars = $$('.hist .hbar');
+    var show = function (el) {
+      var i = Number(el.getAttribute('data-i'));
+      var d = rows[i];
+      tip.innerHTML = '<b>Daily #' + d.n + '</b> · ' + d.ft + ' ft<br><span>' + esc(d.sq) + '</span>';
+      tip.hidden = false;
+      var pr = plot.getBoundingClientRect(), br = el.getBoundingClientRect();
+      var bar = bars[i] && bars[i].getBoundingClientRect();
+      var left = br.left - pr.left + br.width / 2;
+      tip.style.left = Math.max(60, Math.min(pr.width - 60, left)) + 'px';
+      tip.style.top = ((bar && bar.height ? bar.top : br.bottom) - pr.top - 8) + 'px';
+      bars.forEach(function (b, k) { b.classList.toggle('dim', k !== i); });
+    };
+    var hide = function () {
+      tip.hidden = true;
+      bars.forEach(function (b) { b.classList.toggle('dim', false); });
+    };
+    $$('.hist .hit').forEach(function (el) {
+      el.addEventListener('mouseenter', function () { show(el); });
+      el.addEventListener('focus', function () { show(el); });
+      el.addEventListener('mouseleave', hide);
+      el.addEventListener('blur', hide);
+    });
+  }
+
   function openStats() {
     var s = load('stats', blankStats());
     var u = load('ustats', { played: 0, best: 0, total: 0 });
@@ -1103,9 +1191,11 @@
         '<div><b>' + s.best + '</b><span>Best ft</span></div>' +
         '<div><b>' + streak + '</b><span>Streak</span></div>' +
       '</div>' +
+      historyChart() +
       '<div class="bars" role="group" aria-label="Results by type, all daily innings">' + bars + '</div>' +
       '<p class="fine">Longest streak: ' + s.maxStreak + '. Unlimited: ' + plural(u.played, 'game') + ', best ' + u.best + ' ft' +
         (u.played ? ', average ' + Math.round(u.total / u.played) + ' ft' : '') + '. Stats live in this browser only.</p>';
+    wireHistory();
     showDialog($('#dlg-stats'));
   }
 

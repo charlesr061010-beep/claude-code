@@ -35,7 +35,6 @@ from collections import Counter, defaultdict
 from datetime import date
 from itertools import combinations
 
-import pyarrow.parquet as pq
 
 # --------------------------------------------------------------------------
 # Config
@@ -326,7 +325,25 @@ Juan Soto:2018, Jose Altuve:2011, Buster Posey:2009, Yadier Molina:2004, Joey Vo
 Freddie Freeman:2010, Francisco Lindor:2015, Ronald Acuna:2018, Lou Gehrig:1923, Ty Cobb:1905,
 Joe DiMaggio:1936, Yogi Berra:1946, Reggie Jackson:1967, Tom Seaver:1967, Bob Gibson:1959, Satchel Paige:1948,
 Bo Jackson:1986, Fernando Valenzuela:1980, Vladimir Guerrero:2019, Fernando Tatis:2019, Bobby Witt:2022,
-Paul Skenes:2024, Cal Raleigh:2021, Zack Greinke:2004, Jacob deGrom:2014, Manny Ramirez:1993
+Paul Skenes:2024, Cal Raleigh:2021, Zack Greinke:2004, Jacob deGrom:2014, Manny Ramirez:1993,
+Willie Stargell:1962, Carl Yastrzemski:1961, Al Kaline:1953, Brooks Robinson:1955, Frank Robinson:1956,
+Harmon Killebrew:1954, Rod Carew:1967, Robin Yount:1974, Paul Molitor:1978, Tony Perez:1964, Joe Morgan:1963,
+Steve Carlton:1965, Ozzie Smith:1978, Ryne Sandberg:1981, Don Mattingly:1982, Dwight Gooden:1984,
+Darryl Strawberry:1983, Wade Boggs:1982, Dave Winfield:1973, Eddie Murray:1977, Andre Dawson:1976,
+Tim Raines:1979, Gary Carter:1974, Mike Piazza:1992, Jeff Bagwell:1991, Craig Biggio:1988, Frank Thomas:1990,
+Edgar Martinez:1987, Larry Walker:1989, Todd Helton:1997, Ivan Rodriguez:1991, Roy Halladay:1998,
+Felix Hernandez:2005, CC Sabathia:2001, Tim Lincecum:2007, Joe Mauer:2004, Evan Longoria:2008,
+Paul Goldschmidt:2011, Giancarlo Stanton:2010, Andrew McCutchen:2009, Dustin Pedroia:2006, Adrian Beltre:1998,
+Carlos Beltran:1998, Andruw Jones:1996, Ryan Zimmerman:2005, Carlos Correa:2015, Corey Seager:2015,
+Gerrit Cole:2013, Pete Alonso:2019, Elly De La Cruz:2023, Gunnar Henderson:2022, Julio Rodriguez:2022,
+Kyle Schwarber:2015, Jose Ramirez:2013, Salvador Perez:2011, Nolan Arenado:2013, Anthony Rizzo:2011,
+Kris Bryant:2015, Christian Yelich:2013, Vladimir Guerrero:1996, Warren Spahn:1942, Whitey Ford:1950,
+Duke Snider:1947, Willie McCovey:1959, Hank Greenberg:1930, Jimmie Foxx:1925, Rogers Hornsby:1915,
+Honus Wagner:1897, Walter Johnson:1907, Christy Mathewson:1900, Cy Young:1890, Mel Ott:1926, Lefty Grove:1925,
+Bob Feller:1936, Roy Campanella:1948, Pee Wee Reese:1940, Robin Roberts:1948, Luis Aparicio:1956,
+Minnie Minoso:1949, Lou Brock:1961, Thurman Munson:1969, Catfish Hunter:1965, Rollie Fingers:1968,
+Dennis Eckersley:1975, Trevor Hoffman:1993, John Smoltz:1988, Tom Glavine:1987, Mike Mussina:1991,
+Curt Schilling:1988, Josh Gibson:1930
 """.replace("\n", " ").split(",") if x.strip())]
 
 TIERS = [
@@ -391,6 +408,7 @@ class DB:
         self.dir = data_dir
 
     def rows(self, name):
+        import pyarrow.parquet as pq  # imported here so the helpers load (and test) without pyarrow
         return pq.read_table(os.path.join(self.dir, name + ".parquet")).to_pylist()
 
 
@@ -399,6 +417,7 @@ class DB:
 # --------------------------------------------------------------------------
 
 TEAMINFO = {}  # (year, teamID) -> W, L, franchise, league, pennant flag, name
+LEADER_SEASONS = defaultdict(list)  # stat key -> [(playerID, year)] for league leaders
 
 # Leagues MLB officially recognizes as major leagues. Lahman also carries the
 # 1871-75 National Association (lgID "NA", which reads back as null) and
@@ -900,6 +919,10 @@ def build_prompts(P):
                if len([f for f in p["fr_G"] if p["fr_G"][f] > 0]) == 1 and p["seasons"] >= 8}
         bank.add(f"tm-lifer-{fr}", f"Spent his entire career (8+ seasons) with the {tn[fr]}",
                  "Never played a game for another franchise", "team-misc", ans, team=[fr], min_n=5)
+        # Ten-year men
+        ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if len(p["fr_years"][fr]) >= 10}
+        bank.add(f"tm-ten-{fr}", f"Played 10+ seasons for the {tn[fr]}", "Any 10 seasons with at least one game",
+                 "team-misc", ans, team=[fr], min_n=8)
         # Birthplace
         ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if p["country"] and p["country"] != "USA"}
         bank.add(f"tb-intl-{fr}", f"Born outside the U.S. and played for the {tn[fr]}",
@@ -1321,7 +1344,7 @@ def build_prompts(P):
             shared = p["teams"] & star["teams"]
             if shared:
                 ans[p["id"]] = assoc_share(len({y for y, _ in shared}) / max(p["seasons"], 1))
-        slug = re.sub(r"[^a-z]+", "-", ascii_fold(name).lower()).strip("-")
+        slug = re.sub(r"[^a-z]+", "-", ascii_fold(star["name"]).lower()).strip("-")
         bank.add(f"mate-{slug}", f"Was a teammate of {star['name']}",
                  f"Same team, same season. {star['name']} played {star['y0']}–{star['y1']}", "teammate", ans)
 
@@ -1409,11 +1432,50 @@ def build_prompts(P):
             for v, pid in rows:
                 if abs(v - top) < 1e-9:
                     leads[pid] += 1
+                    LEADER_SEASONS[key].append((pid, k[0]))
         ans = {pid: season_bonus(n) for pid, n in leads.items()}
         sub = {"avg": "Highest qualified average in his league", "era": "Lowest qualified ERA in his league",
                "sv": "Saves became an official stat in 1969"}.get(
             key, "Led or tied for the lead in the AL, NL or another major league")
         bank.add(f"lead-{key}", text, sub, "leader", ans)
+
+    # Franchise x league leader: the title came in a season he played mostly for the team.
+    for key, phrase in (("hr", "Led his league in home runs as a member of the {t}"),
+                        ("avg", "Won a batting title with the {t}"),
+                        ("w", "Led his league in wins as a member of the {t}"),
+                        ("so", "Led his league in strikeouts as a member of the {t}"),
+                        ("sb", "Led his league in steals as a member of the {t}")):
+        per_fr = defaultdict(Counter)
+        for pid, y in LEADER_SEASONS[key]:
+            c = P[pid]["year_fr"].get(y)
+            if c:
+                per_fr[c.most_common(1)[0][0]][pid] += 1
+        for fr in FR:
+            ans = {pid: assoc_team(P[pid], fr) * season_bonus(n) for pid, n in per_fr[fr].items()}
+            bank.add(f"tl-{key}-{fr}", phrase.format(t=tn[fr]),
+                     "Counted for the team he played most for that season", "team-award", ans, team=[fr], min_n=6)
+
+    # Multi-franchise honors
+    ans = {}
+    for p in players:
+        frs = {f for _, f in p["allstar"] if f}
+        if len(frs) >= 3:
+            ans[p["id"]] = season_bonus(len(frs))
+    bank.add("as-3fr", "Made All-Star teams with three or more franchises", None, "allstar", ans, min_n=8)
+    ans = {}
+    for p in players:
+        frs = {TEAMINFO[k]["fr"] for k in p["teams"] if TEAMINFO.get(k, {}).get("pennant")}
+        if len(frs) >= 2:
+            ans[p["id"]] = season_bonus(len(frs))
+    bank.add("pen-2fr", "Won pennants with two or more franchises",
+             "Played for AL or NL champions with different franchises", "postseason", ans)
+    ans = {}
+    for p in players:
+        poss = {("OF" if n in ("LF", "CF", "RF") else n) for a, _, n in p["award_pos"] if a == "Gold Glove" and n != "UT"}
+        if len(poss) >= 2:
+            ans[p["id"]] = 1
+    bank.add("gg-2pos", "Won Gold Gloves at two different positions", "Outfield spots count as one position",
+             "award", ans, min_n=6)
 
     # ---- 16. Honors and feats by decade ---------------------------------------------------
     DEC_AWARDS = [("cy", "Cy Young Award", "Won a Cy Young in the {d}s", 1950),
@@ -1547,11 +1609,13 @@ def assign_tiers(bank, P, too_cute_ids):
                 t = T_HR
             p = P[pid]
             # Absolute obscurity floor: in a small pool of unknowns the softmax
-            # spreads shares evenly, but naming any of them is still rare.
-            if p["fame_rank"] > 10000:
-                t = max(t, T_TRIPLE)
-            elif p["fame_rank"] > 5000:
-                t = max(t, T_DOUBLE)
+            # spreads shares evenly, but naming any of them is still rare. The
+            # pool's own front-runners stay Bunts.
+            if t != T_BUNT:
+                if p["fame_rank"] > 10000:
+                    t = max(t, T_TRIPLE)
+                elif p["fame_rank"] > 5000:
+                    t = max(t, T_DOUBLE)
             if pid in pr["cameo"] and p["fame_rank"] <= 400:
                 t = T_CUTE  # a star's brief detour at a position: everyone loves that trivia
             elif t >= T_DOUBLE:
@@ -1560,6 +1624,11 @@ def assign_tiers(bank, P, too_cute_ids):
                 if pid in too_cute_ids or famous_cameo:
                     t = T_CUTE
             tiers.append((pid, t, share))
+        # If cameos took every Bunt, the most common remaining answers are the Bunts.
+        if not any(t == T_BUNT for _, t, _ in tiers):
+            lead = next((sh for _, t, sh in tiers if t != T_CUTE), None)
+            if lead is not None:
+                tiers = [(pid, T_BUNT if t != T_CUTE and sh >= 0.75 * lead else t, sh) for pid, t, sh in tiers]
         pr["ranked"] = tiers
         out.append(pr)
     return out

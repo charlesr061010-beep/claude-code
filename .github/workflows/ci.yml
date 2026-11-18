@@ -14,6 +14,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Unit-test the data pipeline
+        run: python tests/test_build.py
+
       - name: Fact-check the answer bank
         run: python tests/test_data.py
 

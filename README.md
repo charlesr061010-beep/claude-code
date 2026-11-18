@@ -29,7 +29,7 @@ Upper deck
 - **Autocomplete** covers all 23,000+ players. It shows position and years, and Jr./Sr. are spelled out (Ken Griffey Jr. vs. Sr.).
 - **After each inning** you see your answer's rank, every franchise the player suited up for (the prompt's teams in bold), the most common answers, and the deep cuts you could have used.
 - **Box score:** every valid answer for every prompt, filterable, plus a ballpark chart of your total distance and a shareable result.
-- **Past dailies** can be replayed from the archive. Stats (streak, average, best, results by tier) stay in your browser.
+- **Past dailies** can be replayed from the archive, and a daily left unfinished at midnight waits there. Stats (streak, average, best, a chart of recent distances, results by tier) stay in your browser.
 
 ![The final screen with the ballpark flight chart](docs/final.png)
 
@@ -37,17 +37,17 @@ Upper deck
 
 | | |
 | --- | ---: |
-| Prompts | **2,951** |
-| Valid prompt–player answers | **497,591** |
+| Prompts | **3,113** |
+| Valid prompt–player answers | **531,812** |
 | Players | **23,347** (AL/NL since 1876, the other recognized 19th-century majors and the 1914–15 Federal League, and the 1920–48 Negro Leagues) |
 | Data through | 2025 season (Hall of Fame through the 2026 class) |
 
 Prompt families:
 
 - **Franchises:** played for a team, both of two teams (all 435 pairs), a team in a given decade or on its 2025 roster, a historical team (Brooklyn Dodgers, Montreal Expos, Seattle Pilots…), a pennant winner.
-- **Franchise ×:** single-season feats with the team (30 HR, 20 W, .300, 30 SV…), awards with the team, honors won anywhere (Immaculate Grid style: "Played for the Mets and won an MVP"), positions, birthplaces, career milestones, debut team, one-franchise lifers, managers who also played.
-- **Clubhouse:** teammates of 70 stars, from Babe Ruth to Paul Skenes.
-- **League-wide:** career milestones, single-season feats, league leaders and batting titles, awards (also by decade and by position), All-Stars, Hall of Fame cuts, World Series heroics, 110-win and 110-loss teams.
+- **Franchise ×:** single-season feats with the team (30 HR, 20 W, .300, 30 SV…), league titles with the team, awards with the team, honors won anywhere (Immaculate Grid style: "Played for the Mets and won an MVP"), positions, birthplaces, career milestones, debut team, 10-season men, one-franchise lifers, managers who also played.
+- **Clubhouse:** teammates of 145 stars, from Cy Young and Josh Gibson to Paul Skenes.
+- **League-wide:** career milestones, single-season feats, league leaders and batting titles, awards (also by decade and by position), All-Stars (including with three franchises), Hall of Fame cuts, World Series and pennant heroics, 110-win and 110-loss teams.
 - **Origins and oddities:** birth country, state, city, birth country × position ("Venezuelan-born shortstop"), holiday birthdays, height, handedness, all nine positions, debut classes, and name games (last name is an animal, color, food, job or president's name; alliteration; initials).
 
 Franchise prompts count the whole franchise history: Expos seasons count for the Nationals, Brooklyn seasons for the Dodgers. Every prompt that touches a relocated franchise says so. "With the team" means the honor came while he played there; "and won" means with any team.
@@ -57,7 +57,7 @@ Franchise prompts count the whole franchise history: Expos seasons count for the
 - **Recognized leagues only.** Lahman also carries the 1871–75 National Association and pre-1920 independent Black clubs; MLB doesn't count either, so neither does Moonshot.
 - **The modern World Series only,** so the 1884–90 "World's Series" and Negro World Series don't count. The All-Star Game is AL vs. NL; East–West games aren't included.
 - **Rate-stat qualifiers use each team's real games played,** so Josh Gibson's .466 in 1943 counts as a .400 season. Saves count from 1969, when they became official.
-- **`tests/test_data.py` runs about 15,000 checks** against known records: the exact 300-win and 3,000-hit clubs, Hall of Fame membership (Pete Rose and Shoeless Joe correctly out; Ichiro, Sabathia and the 2026 class in), birthplaces (Vladimir Guerrero Jr. was born in Canada), franchise history and more.
+- **`tests/test_data.py` runs about 22,000 checks** against known records: the exact 300-win and 3,000-hit clubs, Hall of Fame membership (Pete Rose and Shoeless Joe correctly out; Ichiro, Sabathia and the 2026 class in), birthplaces (Vladimir Guerrero Jr. was born in Canada), franchise history and more.
 
 ## How rarity works
 
@@ -84,13 +84,14 @@ python3 -m http.server 8765    # then visit http://localhost:8765
 ## Tests
 
 ```sh
+python3 tests/test_build.py                 # unit tests for the pipeline helpers, no dependencies
 python3 tests/test_data.py                  # fact checks on the answer bank, no dependencies
 npm ci && npx playwright install chromium   # once
 python3 -m http.server 8765 &
 node tests/e2e.js http://localhost:8765/    # plays a full game in Chromium
 ```
 
-The e2e test plays a daily game: right answers, a wrong one, and a timeout that survives a reload. It also checks that 120 dailies never repeat a prompt and that difficulty stays balanced, and it exercises search ranking, team and category focus, hard mode, the archive, and a phone-width layout in dark mode. `.github/workflows/ci.yml` runs both suites on every push.
+The e2e test plays a daily game: right answers, a wrong one, and a timeout that survives a reload. It also checks that 120 dailies never repeat a prompt and that difficulty stays balanced, and it exercises search ranking, team and category focus, hard mode, the archive, midnight rollover, the stats chart, and a phone-width layout in dark mode. `.github/workflows/ci.yml` runs all three suites on every push.
 
 ## Rebuilding the data
 
@@ -118,6 +119,7 @@ assets/style.css         scoreboard look, light and dark themes
 assets/app.js            game logic: schedule, pitch clock, search, scoring, sharing, stats
 data/moonshot-data.js    generated prompt and answer bank
 tools/build_data.py      data pipeline
+tests/test_build.py      unit tests for the pipeline helpers
 tests/test_data.py       fact checks on the bank
 tests/e2e.js             browser test
 docs/                    screenshots

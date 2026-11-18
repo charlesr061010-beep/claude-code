@@ -233,6 +233,26 @@ lacks("rec-l110", "Mike Trout")
 has("df-hr40-1990", "Ken Griffey Jr.", "Mark McGwire", "Brady Anderson")
 lacks("df-hr40-1990", "Hank Aaron")
 
+# --- Franchise leaders, ten-year men, multi-franchise honors ------------------------------------
+has("tl-hr-NYY", "Babe Ruth", "Roger Maris", "Wally Pipp", "Graig Nettles", "Aaron Judge")
+lacks("tl-hr-NYY", "Derek Jeter")
+has("tl-so-LAD", "Sandy Koufax", "Clayton Kershaw", "Hideo Nomo")
+has("tm-ten-CHC", "Ernie Banks", "Ryne Sandberg", "Greg Maddux")
+lacks("tm-ten-CHC", "Kris Bryant")             # seven seasons as a Cub
+has("as-3fr", "Roger Clemens", "Alex Rodriguez", "Reggie Jackson")
+lacks("as-3fr", "Derek Jeter")
+has("pen-2fr", "Babe Ruth", "Willie Mays", "Max Scherzer")
+has("mate-vladimir-guerrero-jr", "George Springer", "Bo Bichette")
+lacks("mate-vladimir-guerrero-jr", ("Vladimir Guerrero", 1996))   # father, never teammates
+has("mate-josh-gibson", "Buck Leonard", "Satchel Paige")
+
+# --- Tier sanity ---------------------------------------------------------------------------------
+for p in D["prompts"]:
+    tiers = [x & 7 for x in p["a"]]
+    first_real = next((t for t in tiers if t != 1), None)
+    check(first_real == 0, f"{p['id']}: most common non-Too-Cute answer should be a Bunt")
+    check(any(t == 0 for t in tiers), f"{p['id']}: has no Bunt")
+
 print(f"{CHECKS} checks, {len(FAILS)} failures")
 for f in FAILS:
     print("  FAIL:", f)
