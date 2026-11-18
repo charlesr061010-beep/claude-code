@@ -39,18 +39,18 @@ Upper deck
 
 | | |
 | --- | ---: |
-| Prompts | **3,113** |
-| Valid prompt–player answers | **531,812** |
+| Prompts | **3,321** |
+| Valid prompt–player answers | **563,409** |
 | Players | **23,347** (AL/NL since 1876, the other recognized 19th-century majors and the 1914–15 Federal League, and the 1920–48 Negro Leagues) |
 | Data through | 2025 season (Hall of Fame through the 2026 class) |
 
 Prompt families:
 
 - **Franchises:** played for a team, both of two teams (all 435 pairs), a team in a given decade or on its 2025 roster, a historical team (Brooklyn Dodgers, Montreal Expos, Seattle Pilots…), a pennant winner.
-- **Franchise ×:** single-season feats with the team (30 HR, 20 W, .300, 30 SV…), league titles with the team, awards with the team, honors won anywhere (Immaculate Grid style: "Played for the Mets and won an MVP"), positions, birthplaces, career milestones, debut team, 10-season men, one-franchise lifers, managers who also played.
+- **Franchise ×:** single-season feats with the team (30 HR, 20 W, .300, 30 SV…), league titles with the team, awards with the team, honors won anywhere (Immaculate Grid style: "Played for the Mets and won an MVP"), positions, birthplaces, career milestones, debut team, final team, 10-season men, one-franchise lifers, managers who also played.
 - **Clubhouse:** teammates of 145 stars, from Cy Young and Josh Gibson to Paul Skenes.
 - **League-wide:** career milestones, single-season feats, league leaders and batting titles, awards (also by decade and by position), All-Stars (including with three franchises), Hall of Fame cuts, World Series and pennant heroics, 110-win and 110-loss teams.
-- **Origins and oddities:** birth country, state, city, birth country × position ("Venezuelan-born shortstop"), holiday birthdays, height, handedness, all nine positions, debut classes, and name games (last name is an animal, color, food, job or president's name; alliteration; initials).
+- **Origins and oddities:** birth country, state, city, birth country × position ("Venezuelan-born shortstop") and × honors ("All-Star born in Japan"), Hall of Famers by birth state, holiday birthdays, height, handedness, all nine positions, debut and final-season classes, and name games (last name is an animal, color, food, job or president's name; alliteration; initials).
 
 Franchise prompts count the whole franchise history: Expos seasons count for the Nationals, Brooklyn seasons for the Dodgers. Every prompt that touches a relocated franchise says so. "With the team" means the honor came while he played there; "and won" means with any team.
 
@@ -59,7 +59,7 @@ Franchise prompts count the whole franchise history: Expos seasons count for the
 - **Recognized leagues only.** Lahman also carries the 1871–75 National Association and pre-1920 independent Black clubs; MLB doesn't count either, so neither does Moonshot.
 - **The modern World Series only,** so the 1884–90 "World's Series" and Negro World Series don't count. The All-Star Game is AL vs. NL; East–West games aren't included.
 - **Rate-stat qualifiers use each team's real games played,** so Josh Gibson's .466 in 1943 counts as a .400 season. Saves count from 1969, when they became official.
-- **`tests/test_data.py` runs about 22,000 checks** against known records: the exact 300-win and 3,000-hit clubs, Hall of Fame membership (Pete Rose and Shoeless Joe correctly out; Ichiro, Sabathia and the 2026 class in), birthplaces (Vladimir Guerrero Jr. was born in Canada), franchise history and more.
+- **`tests/test_data.py` runs about 23,500 checks** against known records: the exact 300-win and 3,000-hit clubs, Hall of Fame membership (Pete Rose and Shoeless Joe correctly out; Ichiro, Sabathia and the 2026 class in), birthplaces (Vladimir Guerrero Jr. was born in Canada), franchise history and more.
 
 ## How rarity works
 

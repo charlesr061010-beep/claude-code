@@ -923,6 +923,11 @@ def build_prompts(P):
                if len([f for f in p["fr_G"] if p["fr_G"][f] > 0]) == 1 and p["seasons"] >= 8}
         bank.add(f"tm-lifer-{fr}", f"Spent his entire career (8+ seasons) with the {tn[fr]}",
                  "Never played a game for another franchise", "team-misc", ans, team=[fr], min_n=5)
+        # Last stop: played his final big-league season with the team (careers that are over)
+        ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr]
+               if p["y1"] < last_year and p["y1"] in p["fr_years"][fr]}
+        bank.add(f"tm-final-{fr}", f"Played his final MLB season with the {tn[fr]}",
+                 f"Last season in the majors, careers that ended before {last_year}", "team-misc", ans, team=[fr])
         # Ten-year men
         ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if len(p["fr_years"][fr]) >= 10}
         bank.add(f"tm-ten-{fr}", f"Played 10+ seasons for the {tn[fr]}", "Any 10 seasons with at least one game",
@@ -936,8 +941,10 @@ def build_prompts(P):
             ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if p["country"] == code}
             bank.add(f"tb-{slug}-{fr}", f"Born in {COUNTRIES[code]} and played for the {tn[fr]}", None,
                      "team-birth", ans, team=[fr], min_n=10)
-        for st, stname in (("CA", "California"), ("TX", "Texas"), ("FL", "Florida"), ("NY", "New York"),
-                           ("PA", "Pennsylvania"), ("IL", "Illinois"), ("OH", "Ohio")):
+        for st, stname in (("CA", "California"), ("TX", "Texas"), ("FL", "Florida"), ("NY", "New York State"),
+                           ("PA", "Pennsylvania"), ("IL", "Illinois"), ("OH", "Ohio"), ("GA", "Georgia"),
+                           ("NC", "North Carolina"), ("AL", "Alabama"), ("MO", "Missouri"), ("MA", "Massachusetts"),
+                           ("NJ", "New Jersey"), ("MI", "Michigan")):
             ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if p["state"] == st}
             bank.add(f"tb-{st.lower()}-{fr}", f"Born in {stname} and played for the {tn[fr]}", None,
                      "team-birth", ans, team=[fr], min_n=25)
@@ -1200,6 +1207,9 @@ def build_prompts(P):
              {p["id"]: 1 for p in hofers if p["pos"]["G_p"] >= 0.5 * p["G"] and p["throws"] == "L"}, min_n=6)
     bank.add("h-nows", "Hall of Famer who never won a World Series", "Never on a championship roster", "hof",
              {p["id"]: 1 for p in hofers if not p["ws"]})
+    for st, stname in sorted(STATES.items()):
+        bank.add(f"h-st-{st.lower()}", f"Hall of Famer born in {stname}", "Inducted as a player", "hof",
+                 {p["id"]: 1 for p in hofers if p["state"] == st}, min_n=6)
 
     # World Series / postseason
     bank.add("ws-any", "Won a World Series", "Played for a champion during its title season", "postseason",
@@ -1573,6 +1583,26 @@ def build_prompts(P):
             if n:
                 ans[p["id"]] = season_bonus(n)
         bank.add(f"rec-{key}", text, sub, "record", ans)
+
+    # ---- 20b. Birth country x honors ---------------------------------------------------------
+    ORIGIN_HONORS = [
+        ("as", "All-Star", lambda p: p["n_allstar"] > 0, 8),
+        ("gg", "Gold Glove winner", lambda p: p["aw"]["Gold Glove"] > 0, 6),
+        ("ss", "Silver Slugger winner", lambda p: p["aw"]["Silver Slugger"] > 0, 6),
+        ("ws", "World Series champion", lambda p: p["n_ws"] > 0, 8),
+        ("hr200", "200-home-run hitter", lambda p: p["bat"]["HR"] >= 200, 6),
+        ("w100", "100-game winner", lambda p: p["pit"]["W"] >= 100, 6),
+    ]
+    for code in ("D.R.", "Venezuela", "Cuba", "P.R.", "México", "Japan", "CAN", "Panama", "Curaçao", "Colombia"):
+        slug = re.sub("[^a-z]", "", ascii_fold(code).lower())
+        for key, label, pred, mn in ORIGIN_HONORS:
+            ans = {p["id"]: 1 for p in players if p["country"] == code and pred(p)}
+            bank.add(f"bh-{slug}-{key}", f"{label} born in {COUNTRIES[code]}", None, "origin-honor", ans, min_n=mn)
+
+    # ---- 20c. Last seasons (typed: the suggestion list shows each player's last season) -------
+    for y in range(2005, last_year - 1):
+        ans = {p["id"]: 1 for p in players if p["y1"] == y}
+        bank.add(f"fin-{y}", f"Played his last MLB season in {y}", f"As of the end of the {last_year} season", "debut", ans)
 
     # ---- 20. Debut seasons ---------------------------------------------------------------------
     for y in range(2015, last_year + 1):

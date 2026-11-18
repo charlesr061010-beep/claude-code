@@ -32,7 +32,7 @@
     'leader': 'League leaders', 'decade-feat': 'Decade feat', 'record': 'Team records',
     'birth': 'Birthplace', 'birthday': 'Birthday', 'origin-pos': 'Birthplace + position',
     'body': 'Tale of the tape', 'hand': 'Handedness', 'misc': 'Oddities', 'names': 'Name game',
-    'debut': 'Rookie class'
+    'debut': 'Career bookends', 'origin-honor': 'Birthplace + honors'
   };
   var GROUPS = {
     team: ['team', 'decade', 'era'],
@@ -40,7 +40,7 @@
     link: ['teammate'],
     teamx: ['team-stat', 'team-award', 'team-pos', 'team-birth', 'team-career', 'team-misc', 'team-ever', 'manager'],
     league: ['career', 'season', 'award', 'allstar', 'hof', 'postseason', 'leader', 'decade-feat', 'record'],
-    origin: ['birth', 'birthday', 'origin-pos'],
+    origin: ['birth', 'birthday', 'origin-pos', 'origin-honor'],
     fun: ['names', 'body', 'hand', 'misc', 'debut']
   };
   // One slot per inning; each lists the groups it may draw from.

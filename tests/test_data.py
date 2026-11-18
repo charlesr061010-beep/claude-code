@@ -246,6 +246,20 @@ has("mate-vladimir-guerrero-jr", "George Springer", "Bo Bichette")
 lacks("mate-vladimir-guerrero-jr", ("Vladimir Guerrero", 1996))   # father, never teammates
 has("mate-josh-gibson", "Buck Leonard", "Satchel Paige")
 
+# --- Career bookends, birthplace honors, Hall of Famers by state ---------------------------------
+has("tm-final-NYY", "Derek Jeter", "Lou Gehrig", "Mariano Rivera", "Alex Rodriguez")
+lacks("tm-final-NYY", "Babe Ruth", "Aaron Judge")   # Ruth finished a Brave; Judge is active
+has("tm-final-BOS", "David Ortiz", "Ted Williams", "Dennis Eckersley")
+has("fin-2014", "Derek Jeter", "Paul Konerko", "Alfonso Soriano")
+has("fin-2016", "David Ortiz", "Alex Rodriguez")
+lacks("fin-2016", "Derek Jeter")
+has("h-st-ca", "Ted Williams", "Joe DiMaggio", "Tony Gwynn", "Jeff Kent", "CC Sabathia")
+has("h-st-al", "Hank Aaron", "Willie Mays", "Satchel Paige", "Ozzie Smith")
+has("bh-pr-ws", "Roberto Clemente", "Mike Lowell", "Carlos Correa")
+has("bh-japan-as", "Shohei Ohtani", "Ichiro Suzuki", "Hideo Nomo")
+check(all(PROMPTS[k].get("ty") for k in PROMPTS if k.startswith(("fin-", "deb-", "n-"))),
+      "name-game, debut and last-season prompts are typed innings")
+
 # --- Tier sanity ---------------------------------------------------------------------------------
 for p in D["prompts"]:
     tiers = [x & 7 for x in p["a"]]
