@@ -11,7 +11,11 @@
   // Constants
   // ------------------------------------------------------------------
   var INNINGS = 7;
-  var CLOCK = 30; // seconds per inning
+  var CLOCK = 30; // standard seconds per inning
+  var CLOCK_CHOICES = [[30, '30 seconds (standard)'], [60, '60 seconds'], [0, 'Off']];
+  // The game's clock is fixed when it starts; older saved games default to standard.
+  function clockSecs(g) { g = g || G; return g && typeof g.clock === 'number' ? g.clock : CLOCK; }
+  function clockTag(g) { var c = clockSecs(g); return c === CLOCK ? '' : c ? ' · ' + c + 's clock' : ' · No clock'; }
   var EPOCH = Date.UTC(2026, 10, 18); // Daily #1 = Nov 18, 2026
   var TIERS = [
     { key: 'bunt', label: 'Bunt', pts: 10, bases: 1, sq: '⬜', blurb: "Everybody's first thought." },
@@ -512,10 +516,10 @@
 
   function gameTitle(g) {
     g = g || G;
-    if (g.mode === 'daily') return 'Daily #' + g.num + (g.hard ? ' · Hard' : '');
-    if (g.mode === 'archive') return 'Daily #' + g.num + ' (archive)' + (g.hard ? ' · Hard' : '');
+    if (g.mode === 'daily') return 'Daily #' + g.num + (g.hard ? ' · Hard' : '') + clockTag(g);
+    if (g.mode === 'archive') return 'Daily #' + g.num + ' (archive)' + (g.hard ? ' · Hard' : '') + clockTag(g);
     return (g.challenge ? 'Challenge' : 'Unlimited #' + g.num) +
-      (g.team ? ' · ' + TEAM_NAMES[g.team] : g.cat ? ' · ' + focusLabel(g.cat) : '') + (g.hard ? ' · Hard' : '');
+      (g.team ? ' · ' + TEAM_NAMES[g.team] : g.cat ? ' · ' + focusLabel(g.cat) : '') + (g.hard ? ' · Hard' : '') + clockTag(g);
   }
 
   // ------------------------------------------------------------------
@@ -588,7 +592,8 @@
     var note = G.mode === 'archive' ? '<p class="sub">Archive games don\'t count toward your streak or stats.</p>' : '';
     $('#stage').innerHTML =
       '<article class="card intro">' +
-        '<div class="eyebrow"><span class="inn">' + esc(gameTitle()) + '</span><span>7 innings · 30-second pitch clock</span></div>' +
+        '<div class="eyebrow"><span class="inn">' + esc(gameTitle()) + '</span><span>7 innings · ' +
+          (load('clock', CLOCK) ? load('clock', CLOCK) + '-second pitch clock' : 'no pitch clock') + '</span></div>' +
         '<h2>' + esc(heading) + '</h2>' +
         '<p>Every correct answer scores. Obvious picks barely leave the infield; deep cuts clear the wall. A wrong answer or an empty clock is a strikeout.</p>' +
         '<div class="tier-strip" aria-label="Scoring">' + tierStrip() + '</div>' +
@@ -598,6 +603,10 @@
           (G.team ? '' : catSelect('cat-focus', G.cat || '')) + '</div>' : '') +
         '<label class="toggle" for="hard-mode"><input type="checkbox" id="hard-mode"' + (load('hard', false) ? ' checked' : '') + '>' +
           '<span><strong>Hard mode.</strong> No name suggestions. Type the full name and press Enter.</span></label>' +
+        '<div class="row"><label class="team-pick" for="clock-pick">Pitch clock <select id="clock-pick">' +
+          CLOCK_CHOICES.map(function (c) {
+            return '<option value="' + c[0] + '"' + (c[0] === load('clock', CLOCK) ? ' selected' : '') + '>' + c[1] + '</option>';
+          }).join('') + '</select></label></div>' +
         '<div class="row"><button class="btn primary" id="btn-start" type="button">Play ball</button>' +
         '<button class="btn ghost" id="btn-rules" type="button">How scoring works</button></div>' +
       '</article>';
@@ -620,16 +629,24 @@
       if (c2) c2.focus();
     });
     $('#hard-mode').addEventListener('change', function (e) { save('hard', e.target.checked); });
+    $('#clock-pick').addEventListener('change', function (e) {
+      save('clock', Number(e.target.value));
+      var eb = $('.intro .eyebrow span:last-child');
+      var c = Number(e.target.value);
+      if (eb) eb.textContent = '7 innings · ' + (c ? c + '-second pitch clock' : 'no pitch clock');
+    });
     $('#btn-start').focus({ preventScroll: true });
   }
 
   function startInning() {
     if (G.cur === 0 && G.phase === 'intro') {
       G.hard = !!load('hard', false);
+      var pick = load('clock', CLOCK);
+      G.clock = pick === 0 || pick === 60 ? pick : CLOCK;
       if (G.mode === 'unlimited') markSeen(G.ids);
     }
     G.phase = 'pitch';
-    G.deadline = Date.now() + CLOCK * 1000;
+    G.deadline = clockSecs() ? Date.now() + clockSecs() * 1000 : 0;
     persist();
     render();
   }
@@ -656,9 +673,11 @@
         '<p class="ask">Name a player who fits:</p>' +
         '<h2 class="prompt">' + esc(p.t) + '</h2>' +
         (p.s ? '<p class="sub">' + esc(p.s) + '</p>' : '') +
-        '<div class="clock" id="clock"><span class="clock-num" id="clock-num" aria-hidden="true">' + CLOCK + '</span>' +
-          '<div class="clock-bar" aria-hidden="true"><div class="clock-fill" id="clock-fill"></div></div>' +
-          '<span class="sr-only" id="clock-sr" aria-live="polite"></span></div>' +
+        (clockSecs()
+          ? '<div class="clock" id="clock"><span class="clock-num" id="clock-num" aria-hidden="true">' + clockSecs() + '</span>' +
+            '<div class="clock-bar" aria-hidden="true"><div class="clock-fill" id="clock-fill"></div></div>' +
+            '<span class="sr-only" id="clock-sr" aria-live="polite"></span></div>'
+          : '<p class="sub" id="clock">No pitch clock this game. Take your time.</p>') +
         (typed
           ? '<form class="search" id="hard-form" autocomplete="off">' +
               '<label for="guess">Your answer <span class="hard-tag">' + (G.hard ? 'Hard mode' : 'Typed inning') + '</span></label>' +
@@ -700,13 +719,14 @@
   // ---------- pitch clock ----------
   function startClock() {
     stopClock();
+    if (!clockSecs() || !G.deadline) return; // clock turned off for this game
     var warned = false;
     var tick = function () {
       var left = Math.max(0, G.deadline - Date.now());
       var secs = Math.ceil(left / 1000);
       var num = $('#clock-num'), fill = $('#clock-fill'), clock = $('#clock');
       if (num) num.textContent = secs;
-      if (fill) fill.style.transform = 'scaleX(' + (left / (CLOCK * 1000)) + ')';
+      if (fill) fill.style.transform = 'scaleX(' + (left / (clockSecs() * 1000)) + ')';
       if (clock) clock.classList.toggle('hurry', secs <= 7);
       if (!warned && secs <= 10 && left > 0) {
         warned = true;
@@ -943,6 +963,7 @@
         (G.team ? ' (' + TEAM_NAMES[G.team] + ')' : G.cat ? ' (' + focusLabel(G.cat) + ')' : '')
       : 'Moonshot Daily #' + G.num;
     if (G.hard) head += ' · Hard mode';
+    head += clockTag(G);
     var squares = G.inn.map(function (x) { return tierOf(x.t).sq; }).join('');
     var link = SHARE_URL ? '\n' + SHARE_URL : '';
     if (G.mode === 'unlimited') {
@@ -1256,7 +1277,7 @@
 
   // The pitch clock doesn't stop for menus, so they wait until the at-bat is over.
   function atBat() {
-    if (G && G.phase === 'pitch') {
+    if (G && G.phase === 'pitch' && clockSecs()) {
       toast('The pitch clock is running. Finish this at-bat first.');
       var input = $('#guess');
       if (input) input.focus();

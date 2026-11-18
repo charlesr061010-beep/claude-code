@@ -285,6 +285,24 @@ const ok = (cond, msg) => { if (!cond) fails.push(msg); };
   ok(/manifest\.webmanifest$/.test(manifest), 'manifest linked');
   await oc.close();
 
+  // --- adjustable pitch clock (accessibility) -------------------------------------
+  const kc = await browser.newContext({ viewport: { width: 900, height: 800 } });
+  const kp = await kc.newPage();
+  kp.on('pageerror', (e) => errors.push('clock: ' + e.message));
+  await kp.addInitScript(() => { try { localStorage.setItem('moonshot.seenHelp', 'true'); } catch (e) {} });
+  await kp.goto(BASE + 'index.html');
+  await kp.waitForSelector('#clock-pick');
+  await kp.selectOption('#clock-pick', '0');
+  await kp.click('#btn-start');
+  await kp.waitForSelector('#guess');
+  ok((await kp.textContent('#clock')).includes('No pitch clock'), 'clock can be turned off');
+  await kp.reload();
+  await kp.waitForSelector('#guess');
+  ok(!(await kp.$('#btn-next')), 'with no clock, a reload never times out');
+  await kp.click('#btn-help');
+  ok(!!(await kp.$('#dlg-help[open]')), 'with no clock, menus open mid-inning');
+  await kc.close();
+
   // --- phone, dark -------------------------------------------------------------
   const m = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
   const mp = await m.newPage();

@@ -22,7 +22,7 @@ Upper deck
 | Home Run | 100 | Almost nobody names this one |
 | Strikeout | 0 | Wrong player, a repeat, or the 30-second pitch clock ran out |
 
-- **Seven prompts, one answer each,** on a 30-second pitch clock. Your total is your distance; 700 ft is a perfect game.
+- **Seven prompts, one answer each,** on a 30-second pitch clock (adjustable to 60 seconds or off for anyone who needs it; results say so). Your total is your distance; 700 ft is a perfect game.
 - **Daily:** everyone gets the same seven prompts, and a new game starts at local midnight (Daily #1 is Nov 18, 2026). Each prompt group is dealt from its own fixed shuffled queue, so no daily prompt repeats for about six months, no daily uses the same franchise twice, and difficulty ramps from easy to hard.
 - **Unlimited:** fresh random games that skip prompts you've seen recently. You can focus on one **team** (all seven innings about the Mariners, say) or one **category** (franchises, teammates, honors, birthplaces, name games).
 - **Hard mode:** no name suggestions; type the full name and press Enter. Misspellings aren't strikeouts, but the clock keeps running.
