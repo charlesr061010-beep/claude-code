@@ -5,6 +5,7 @@
 
   var D = window.MOONSHOT_DATA;
   var $ = function (sel, root) { return (root || document).querySelector(sel); };
+  var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
 
   // ------------------------------------------------------------------
   // Constants
@@ -25,26 +26,58 @@
     'team': 'Franchise', 'pair': 'Two teams', 'era': 'Old-time team', 'decade': 'Franchise era',
     'team-stat': 'Franchise feat', 'team-award': 'Franchise honors', 'team-misc': 'Franchise lifer',
     'team-birth': 'Franchise + birthplace', 'team-pos': 'Franchise + position',
-    'team-career': 'Franchise + career', 'career': 'Career milestone', 'season': 'Single season',
+    'team-career': 'Franchise + career', 'team-ever': 'Franchise + honors', 'manager': 'Dugout',
+    'teammate': 'Clubhouse', 'career': 'Career milestone', 'season': 'Single season',
     'award': 'Hardware', 'allstar': 'All-Stars', 'hof': 'Cooperstown', 'postseason': 'October',
-    'birth': 'Birthplace', 'birthday': 'Birthday', 'body': 'Tale of the tape', 'hand': 'Handedness',
-    'misc': 'Oddities', 'names': 'Name game'
+    'leader': 'League leaders', 'decade-feat': 'Decade feat', 'record': 'Team records',
+    'birth': 'Birthplace', 'birthday': 'Birthday', 'origin-pos': 'Birthplace + position',
+    'body': 'Tale of the tape', 'hand': 'Handedness', 'misc': 'Oddities', 'names': 'Name game',
+    'debut': 'Rookie class'
   };
   var GROUPS = {
     team: ['team', 'decade', 'era'],
     pair: ['pair'],
-    teamx: ['team-stat', 'team-award', 'team-pos', 'team-birth', 'team-career', 'team-misc'],
-    league: ['career', 'season', 'award', 'allstar', 'hof', 'postseason'],
-    origin: ['birth', 'birthday'],
-    fun: ['names', 'body', 'hand', 'misc']
+    link: ['teammate'],
+    teamx: ['team-stat', 'team-award', 'team-pos', 'team-birth', 'team-career', 'team-misc', 'team-ever', 'manager'],
+    league: ['career', 'season', 'award', 'allstar', 'hof', 'postseason', 'leader', 'decade-feat', 'record'],
+    origin: ['birth', 'birthday', 'origin-pos'],
+    fun: ['names', 'body', 'hand', 'misc', 'debut']
   };
   // One slot per inning; each lists the groups it may draw from.
-  var SLOTS = [['team', 'pair'], ['pair'], ['teamx'], ['league'], ['teamx'], ['origin', 'league'], ['fun', 'origin']];
+  var SLOTS = [['team', 'pair', 'link'], ['pair', 'link'], ['teamx'], ['league'], ['teamx'], ['origin', 'league'], ['fun', 'origin']];
+  // Team-focus games draw only franchise prompts.
+  var TEAM_SLOTS = [['team', 'decade', 'era'], ['pair'], ['team-stat'], ['team-award', 'team-ever'],
+    ['team-pos', 'team-birth'], ['pair'], ['team-career', 'team-misc', 'manager', 'decade']];
   var DIFFS = [1, 1, 2, 2, 2, 3, 3];
   var DISTANCE_LABELS = [
-    [0, 'Infield pop-up'], [140, 'Warning track'], [280, 'Over the wall'],
-    [420, 'Upper deck'], [560, 'Out of the park'], [680, 'Moonshot']
+    [0, 'Infield pop-up'], [150, 'Shallow fly'], [300, 'Warning track'], [400, 'Home run'],
+    [480, 'Upper deck'], [580, 'Out of the stadium'], [680, 'Moonshot']
   ];
+  var TEAM_NAMES = {
+    ANA: 'Angels', ARI: 'Diamondbacks', ATL: 'Braves', BAL: 'Orioles', BOS: 'Red Sox', CHC: 'Cubs',
+    CHW: 'White Sox', CIN: 'Reds', CLE: 'Guardians', COL: 'Rockies', DET: 'Tigers', FLA: 'Marlins',
+    HOU: 'Astros', KCR: 'Royals', LAD: 'Dodgers', MIL: 'Brewers', MIN: 'Twins', NYM: 'Mets', NYY: 'Yankees',
+    OAK: 'Athletics', PHI: 'Phillies', PIT: 'Pirates', SDP: 'Padres', SEA: 'Mariners', SFG: 'Giants',
+    STL: 'Cardinals', TBD: 'Rays', TEX: 'Rangers', TOR: 'Blue Jays', WSN: 'Nationals'
+  };
+  var SEEN_MAX = 500; // Unlimited avoids your most recent prompts
+  var FOCUS = [
+    ['', 'Any category', null],
+    ['teams', 'Franchises', ['team', 'pair', 'teamx']],
+    ['pair', 'Two teams', ['pair']],
+    ['link', 'Teammates', ['link']],
+    ['league', 'Honors and milestones', ['league']],
+    ['origin', 'Birthplaces', ['origin']],
+    ['fun', 'Name games and oddities', ['fun']]
+  ];
+  function focusGroups(key) {
+    for (var i = 0; i < FOCUS.length; i++) if (FOCUS[i][0] === key) return FOCUS[i][2];
+    return null;
+  }
+  function focusLabel(key) {
+    for (var i = 0; i < FOCUS.length; i++) if (FOCUS[i][0] === key) return FOCUS[i][1];
+    return '';
+  }
 
   // ------------------------------------------------------------------
   // Storage (per-browser conveniences only; the game works without it)
@@ -86,19 +119,26 @@
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
+  function shuffle(arr, r) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(r() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
   function ordinal(n) {
     var s = ['th', 'st', 'nd', 'rd'], v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
   }
   function fmt(n) { return n.toLocaleString('en-US'); }
   function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
-  function player(i) { return D.players[i]; }
   function playerName(i) { return D.players[i][0]; }
   function playerMeta(i) {
     var p = D.players[i];
     var yrs = p[1] === p[2] ? String(p[1]) : p[1] + '–' + p[2];
     return (p[3] ? p[3] + ' · ' : '') + yrs;
   }
+  function playerYears(i) { return playerMeta(i).replace(/^[^·]*· /, ''); }
   function tierOf(t) { return t < 0 ? K : TIERS[t]; }
   function distanceLabel(ft) {
     var lab = DISTANCE_LABELS[0][1];
@@ -109,6 +149,10 @@
     var d = new Date();
     var local = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
     return Math.max(1, Math.floor((local - EPOCH) / 864e5) + 1);
+  }
+  function dateOfNum(n) {
+    var d = new Date(EPOCH + (n - 1) * 864e5);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   }
   function msToMidnight() {
     var d = new Date();
@@ -121,7 +165,7 @@
     t.textContent = msg;
     t.hidden = false;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.hidden = true; }, 2200);
+    toastTimer = setTimeout(function () { t.hidden = true; }, 2400);
   }
 
   // ------------------------------------------------------------------
@@ -139,18 +183,49 @@
     });
   }
 
+  // Each prompt's answers ship as 3 base64url chars apiece (playerIndex * 8 + tier),
+  // most common first. Decode a prompt the first time it's needed.
+  var B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  var B64_INDEX = {};
+  for (var bi = 0; bi < 64; bi++) B64_INDEX[B64.charAt(bi)] = bi;
+  var decoded = {};
+  function ans(pi) {
+    if (decoded[pi]) return decoded[pi];
+    var s = D.prompts[pi].a;
+    if (typeof s !== 'string') return (decoded[pi] = s); // older plain-array data
+    var out = new Int32Array(s.length / 3);
+    for (var i = 0, j = 0; i < s.length; i += 3, j++) {
+      out[j] = (B64_INDEX[s.charAt(i)] << 12) | (B64_INDEX[s.charAt(i + 1)] << 6) | B64_INDEX[s.charAt(i + 2)];
+    }
+    return (decoded[pi] = out);
+  }
+  function answerCount(pi) {
+    var s = D.prompts[pi].a;
+    return typeof s === 'string' ? s.length / 3 : s.length;
+  }
+
   // Map playerIndex -> { t: tier, r: rank } for one prompt.
   function answersFor(pi) {
     if (answerCache[pi]) return answerCache[pi];
     var m = new Map();
-    var a = D.prompts[pi].a;
+    var a = ans(pi);
     for (var i = 0; i < a.length; i++) m.set(a[i] >> 3, { t: a[i] & 7, r: i + 1 });
     answerCache[pi] = m;
     return m;
   }
 
-  function search(q) {
-    q = norm(q).replace(/\b(jr|sr|ii|iii|iv)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  // Suffixes count when a player has one ("griffey jr"), and are ignored when
+  // nobody matches with them ("bobby bonds jr" still finds Bobby Bonds).
+  function search(raw) {
+    var q = norm(raw);
+    var hits = searchNorm(q);
+    if (!hits.length && /\b(jr|sr|ii|iii|iv)\b/.test(q)) {
+      hits = searchNorm(q.replace(/\b(jr|sr|ii|iii|iv)\b/g, ' ').replace(/\s+/g, ' ').trim());
+    }
+    return hits;
+  }
+
+  function searchNorm(q) {
     if (q.length < 2) return [];
     var qt = q.split(' ');
     var qc = q.replace(/ /g, '');
@@ -180,7 +255,7 @@
   }
 
   // ------------------------------------------------------------------
-  // Choosing a game's seven prompts
+  // Choosing prompts
   // ------------------------------------------------------------------
   var POOLS = null;
   function pools() {
@@ -193,32 +268,109 @@
     return POOLS;
   }
 
-  function pickGame(seed) {
-    var r = rng(seed);
-    var P = pools();
-    var diffs = DIFFS.slice();
-    for (var i = diffs.length - 1; i > 0; i--) { var j = Math.floor(r() * (i + 1)); var t = diffs[i]; diffs[i] = diffs[j]; diffs[j] = t; }
-    var chosen = [], usedTeams = {};
-    SLOTS.forEach(function (slot, s) {
-      var group = slot[Math.floor(r() * slot.length)];
-      var ok = function (pi) {
-        if (chosen.indexOf(pi) >= 0) return false;
-        var tm = D.prompts[pi].tm || [];
-        for (var k = 0; k < tm.length; k++) if (usedTeams[tm[k]]) return false;
-        return true;
-      };
-      var pool = P[group].filter(ok);
-      var pref = pool.filter(function (pi) { return D.prompts[pi].d === diffs[s]; });
-      var from = pref.length ? pref : pool;
-      var pick = from[Math.floor(r() * from.length)];
-      chosen.push(pick);
-      (D.prompts[pick].tm || []).forEach(function (t) { usedTeams[t] = true; });
-    });
-    // Easier innings first, so the game builds.
+  function teamClash(pi, usedTeams) {
+    var tm = D.prompts[pi].tm || [];
+    for (var k = 0; k < tm.length; k++) if (usedTeams[tm[k]]) return true;
+    return false;
+  }
+  function claimTeams(pi, usedTeams) { (D.prompts[pi].tm || []).forEach(function (t) { usedTeams[t] = true; }); }
+  function orderByDifficulty(chosen) {
     return chosen
       .map(function (pi, k) { return { pi: pi, k: k }; })
       .sort(function (a, b) { return D.prompts[a.pi].d - D.prompts[b.pi].d || a.k - b.k; })
       .map(function (x) { return D.prompts[x.pi].id; });
+  }
+
+  // Daily games walk fixed shuffled queues, one per group, so a prompt does
+  // not come back until its whole group has been used. Day N is reproduced by
+  // replaying days 1..N, which keeps it identical for every player.
+  var SCHEDULE = [];
+  var QUEUES = null;
+  function dailyIds(num) {
+    if (!QUEUES) {
+      QUEUES = {};
+      var P = pools();
+      Object.keys(P).forEach(function (g) {
+        QUEUES[g] = { order: shuffle(P[g].slice(), rng(hashStr('moonshot-queue-' + g))), used: new Set() };
+      });
+    }
+    while (SCHEDULE.length < num) {
+      var day = SCHEDULE.length + 1;
+      var r = rng(hashStr('moonshot-daily-' + day));
+      var diffs = shuffle(DIFFS.slice(), r);
+      var chosen = [], usedTeams = {};
+      SLOTS.forEach(function (slot, s) {
+        // Weight each allowed group by how many unused prompts it still has,
+        // so small groups don't run dry (and start repeating) first.
+        var left = slot.map(function (g) { return Math.max(1, QUEUES[g].order.length - QUEUES[g].used.size); });
+        var x = r() * left.reduce(function (a, b) { return a + b; }, 0), gi = 0;
+        while (gi < left.length - 1 && x >= left[gi]) { x -= left[gi]; gi++; }
+        var q = QUEUES[slot[gi]];
+        if (q.used.size >= q.order.length) q.used.clear();
+        var fallback = -1, pick = -1, seen = 0;
+        for (var i = 0; i < q.order.length && seen < 40; i++) {
+          var pi = q.order[i];
+          if (q.used.has(pi) || chosen.indexOf(pi) >= 0 || teamClash(pi, usedTeams)) continue;
+          seen++;
+          if (fallback < 0) fallback = pi;
+          if (D.prompts[pi].d === diffs[s]) { pick = pi; break; }
+        }
+        if (pick < 0) pick = fallback;
+        if (pick < 0) { // every remaining prompt clashes: start a new cycle for this group
+          q.used.clear();
+          pick = q.order.filter(function (pi) { return chosen.indexOf(pi) < 0 && !teamClash(pi, usedTeams); })[0];
+        }
+        q.used.add(pick);
+        chosen.push(pick);
+        claimTeams(pick, usedTeams);
+      });
+      SCHEDULE.push(orderByDifficulty(chosen));
+    }
+    return SCHEDULE[num - 1];
+  }
+
+  // Unlimited: random, avoiding prompts seen recently; optional team focus.
+  function randomIds(seed, team, cat) {
+    var r = rng(seed);
+    var seen = new Set(load('seen', []));
+    var diffs = shuffle(DIFFS.slice(), r);
+    var chosen = [], usedTeams = {};
+    var groups = !team && focusGroups(cat);
+    var slots = team ? TEAM_SLOTS : groups ? DIFFS.map(function () { return groups; }) : SLOTS;
+    slots.forEach(function (slot, s) {
+      var pool;
+      if (team) {
+        var cats = slot;
+        pool = D.prompts.map(function (p, i) { return i; }).filter(function (pi) {
+          var p = D.prompts[pi];
+          return (p.tm || []).indexOf(team) >= 0 && cats.indexOf(p.c) >= 0;
+        });
+        if (!pool.length) {
+          pool = D.prompts.map(function (p, i) { return i; }).filter(function (pi) {
+            return (D.prompts[pi].tm || []).indexOf(team) >= 0;
+          });
+        }
+      } else {
+        pool = pools()[slot[Math.floor(r() * slot.length)]];
+      }
+      var ok = pool.filter(function (pi) {
+        return chosen.indexOf(pi) < 0 && (team || !teamClash(pi, usedTeams));
+      });
+      if (!ok.length) ok = pool.filter(function (pi) { return chosen.indexOf(pi) < 0; });
+      var fresh = ok.filter(function (pi) { return !seen.has(D.prompts[pi].id); });
+      var base = fresh.length ? fresh : ok;
+      var pref = base.filter(function (pi) { return D.prompts[pi].d === diffs[s]; });
+      var from = pref.length ? pref : base;
+      var pick = from[Math.floor(r() * from.length)];
+      chosen.push(pick);
+      if (!team) claimTeams(pick, usedTeams);
+    });
+    return orderByDifficulty(chosen);
+  }
+
+  function markSeen(ids) {
+    var seen = load('seen', []).filter(function (id) { return ids.indexOf(id) < 0; });
+    save('seen', seen.concat(ids).slice(-SEEN_MAX));
   }
 
   // ------------------------------------------------------------------
@@ -229,43 +381,55 @@
   var timer = null;
   var locked = false;
 
-  function newGame(mode, num, seed) {
-    return {
-      mode: mode, num: num, seed: seed,
-      ids: pickGame(seed),
-      inn: [], cur: 0, phase: 'intro', deadline: 0
-    };
+  function newGame(mode, num, ids, extra) {
+    var g = { mode: mode, num: num, ids: ids, inn: [], cur: 0, phase: 'intro', deadline: 0 };
+    if (extra) Object.keys(extra).forEach(function (k) { g[k] = extra[k]; });
+    return g;
   }
-
-  function dailyGame() {
-    var num = todayNum();
-    var saved = load('daily', null);
-    if (saved && saved.num === num && saved.ids && validIds(saved.ids)) return saved;
-    var g = newGame('daily', num, hashStr('moonshot-daily-' + num));
-    save('daily', g);
+  function validIds(ids) {
+    return ids && ids.length === INNINGS && ids.every(function (id) { return id in PROMPT_INDEX; });
+  }
+  function dailyGame(num) {
+    num = num || todayNum();
+    var key = num === todayNum() ? 'daily' : 'archive';
+    var saved = load(key, null);
+    if (saved && saved.num === num && validIds(saved.ids)) return saved;
+    var g = newGame(key === 'daily' ? 'daily' : 'archive', num, dailyIds(num));
+    save(key, g);
     return g;
   }
   function unlimitedGame(fresh) {
     var saved = !fresh && load('unlimited', null);
-    if (saved && saved.ids && validIds(saved.ids) && saved.phase !== 'final') return saved;
+    if (saved && validIds(saved.ids) && saved.phase !== 'final') return saved;
     var count = (load('ustats', { played: 0 }).played || 0) + 1;
-    var g = newGame('unlimited', count, (Math.random() * 4294967296) >>> 0);
+    var team = load('team', '') || '';
+    if (team && !TEAM_NAMES[team]) team = '';
+    var cat = team ? '' : (load('cat', '') || '');
+    if (!focusGroups(cat)) cat = '';
+    var g = newGame('unlimited', count, randomIds((Math.random() * 4294967296) >>> 0, team, cat),
+      { team: team, cat: cat });
     save('unlimited', g);
     return g;
   }
-  function validIds(ids) {
-    return ids.length === INNINGS && ids.every(function (id) { return id in PROMPT_INDEX; });
-  }
-  function persist() { if (G) save(G.mode === 'daily' ? 'daily' : 'unlimited', G); }
+  function storageKey(g) { return g.mode === 'daily' ? 'daily' : g.mode === 'archive' ? 'archive' : 'unlimited'; }
+  function persist() { if (G) save(storageKey(G), G); }
   function promptAt(i) { return PROMPT_INDEX[G.ids[i]]; }
   function usedPlayers() { return G.inn.filter(function (x) { return x.p >= 0; }).map(function (x) { return x.p; }); }
   function totalFt(g) { return (g || G).inn.reduce(function (s, x) { return s + x.pts; }, 0); }
+  function gameTitle(g) {
+    g = g || G;
+    if (g.mode === 'daily') return 'Daily #' + g.num + (g.hard ? ' · Hard' : '');
+    if (g.mode === 'archive') return 'Daily #' + g.num + ' (archive)' + (g.hard ? ' · Hard' : '');
+    return 'Unlimited #' + g.num + (g.team ? ' · ' + TEAM_NAMES[g.team] : g.cat ? ' · ' + focusLabel(g.cat) : '') +
+      (g.hard ? ' · Hard' : '');
+  }
 
   // ------------------------------------------------------------------
   // Scoreboard
   // ------------------------------------------------------------------
   function renderBoard() {
-    var html = '<div class="hd lbl">' + (G.mode === 'daily' ? 'Daily' : 'Unlimited') + '</div>';
+    var lbl = G.mode === 'unlimited' ? 'Unlimited' : 'Daily';
+    var html = '<div class="hd lbl">' + lbl + '</div>';
     for (var i = 1; i <= INNINGS; i++) html += '<div class="hd">' + i + '</div>';
     html += '<div class="hd">Ft</div>';
     html += '<div class="team">You<small>#' + G.num + '</small></div>';
@@ -281,9 +445,9 @@
         label = 'Inning ' + (k + 1) + ': not played';
       }
       if (k === G.cur && G.phase !== 'final' && G.phase !== 'intro') cls += ' now';
-      html += '<div class="' + cls + '" aria-label="' + esc(label) + '">' + body + '</div>';
+      html += '<div class="' + cls + '" role="img" aria-label="' + esc(label) + '">' + body + '</div>';
     }
-    html += '<div class="plate tot" aria-label="Total ' + totalFt() + ' feet">' + totalFt() + '</div>';
+    html += '<div class="plate tot" role="img" aria-label="Total ' + totalFt() + ' feet">' + totalFt() + '</div>';
     $('#board').innerHTML = html;
   }
 
@@ -293,7 +457,7 @@
   function render() {
     stopClock();
     renderBoard();
-    $('#mode-daily').setAttribute('aria-pressed', String(G.mode === 'daily'));
+    $('#mode-daily').setAttribute('aria-pressed', String(G.mode !== 'unlimited'));
     $('#mode-unlimited').setAttribute('aria-pressed', String(G.mode === 'unlimited'));
     if (G.phase === 'intro') renderIntro();
     else if (G.phase === 'pitch') renderPitch();
@@ -307,25 +471,69 @@
     }).join('') + '<span class="chip tier-k">Strikeout <b>0</b></span>';
   }
 
+  function catSelect(id, current) {
+    var opts = FOCUS.map(function (f) {
+      return '<option value="' + f[0] + '"' + (f[0] === current ? ' selected' : '') + '>' + esc(f[1]) + '</option>';
+    }).join('');
+    return '<label class="team-pick" for="' + id + '">Category <select id="' + id + '">' + opts + '</select></label>';
+  }
+
+  function teamSelect(id, current) {
+    var opts = '<option value="">Any team</option>' + Object.keys(TEAM_NAMES)
+      .sort(function (a, b) { return TEAM_NAMES[a].localeCompare(TEAM_NAMES[b]); })
+      .map(function (k) { return '<option value="' + k + '"' + (k === current ? ' selected' : '') + '>' + TEAM_NAMES[k] + '</option>'; })
+      .join('');
+    return '<label class="team-pick" for="' + id + '">Team focus <select id="' + id + '">' + opts + '</select></label>';
+  }
+
   function renderIntro() {
     var lineup = G.ids.map(function (id) { return CAT_LABEL[D.prompts[PROMPT_INDEX[id]].c] || ''; });
-    var title = G.mode === 'daily' ? 'Daily game #' + G.num : 'Unlimited game #' + G.num;
+    var heading = G.mode === 'unlimited'
+      ? (G.team ? 'Seven innings of ' + TEAM_NAMES[G.team] + ' trivia.' : 'A fresh seven-inning game, dealt at random.')
+      : 'Name a player who fits each prompt. The rarer your answer, the farther it flies.';
+    var note = G.mode === 'archive' ? '<p class="sub">Archive games don\'t count toward your streak or stats.</p>' : '';
     $('#stage').innerHTML =
       '<article class="card intro">' +
-        '<div class="eyebrow"><span class="inn">' + esc(title) + '</span><span>7 innings · 30-second pitch clock</span></div>' +
-        '<h2>Name a player who fits each prompt. The rarer your answer, the farther it flies.</h2>' +
+        '<div class="eyebrow"><span class="inn">' + esc(gameTitle()) + '</span><span>7 innings · 30-second pitch clock</span></div>' +
+        '<h2>' + esc(heading) + '</h2>' +
         '<p>Every correct answer scores. Obvious picks barely leave the infield; deep cuts clear the wall. A wrong answer or an empty clock is a strikeout.</p>' +
         '<div class="tier-strip" aria-label="Scoring">' + tierStrip() + '</div>' +
-        '<p class="sub"><strong>Today\'s lineup:</strong> ' + esc(lineup.join(' · ')) + '</p>' +
+        '<p class="sub"><strong>' + (G.mode === 'daily' ? 'Today\'s' : 'This game\'s') + ' lineup:</strong> ' + esc(lineup.join(' · ')) + '</p>' +
+        note +
+        (G.mode === 'unlimited' ? '<div class="row">' + teamSelect('team-focus', G.team || '') +
+          (G.team ? '' : catSelect('cat-focus', G.cat || '')) + '</div>' : '') +
+        '<label class="toggle" for="hard-mode"><input type="checkbox" id="hard-mode"' + (load('hard', false) ? ' checked' : '') + '>' +
+          '<span><strong>Hard mode.</strong> No name suggestions. Type the full name and press Enter.</span></label>' +
         '<div class="row"><button class="btn primary" id="btn-start" type="button">Play ball</button>' +
         '<button class="btn ghost" id="btn-rules" type="button">How scoring works</button></div>' +
       '</article>';
     $('#btn-start').addEventListener('click', function () { startInning(); });
     $('#btn-rules').addEventListener('click', openHelp);
+    var sel = $('#team-focus');
+    if (sel) sel.addEventListener('change', function () {
+      save('team', sel.value);
+      G = unlimitedGame(true);
+      render();
+      var s2 = $('#team-focus');
+      if (s2) s2.focus();
+    });
+    var cs = $('#cat-focus');
+    if (cs) cs.addEventListener('change', function () {
+      save('cat', cs.value);
+      G = unlimitedGame(true);
+      render();
+      var c2 = $('#cat-focus');
+      if (c2) c2.focus();
+    });
+    $('#hard-mode').addEventListener('change', function (e) { save('hard', e.target.checked); });
     $('#btn-start').focus({ preventScroll: true });
   }
 
   function startInning() {
+    if (G.cur === 0 && G.phase === 'intro') {
+      G.hard = !!load('hard', false);
+      if (G.mode === 'unlimited') markSeen(G.ids);
+    }
     G.phase = 'pitch';
     G.deadline = Date.now() + CLOCK * 1000;
     persist();
@@ -334,14 +542,14 @@
 
   function diffDots(d) {
     var names = { 1: 'easy', 2: 'medium', 3: 'hard' };
-    var s = '<span class="diff" title="Difficulty: ' + names[d] + '" aria-label="Difficulty: ' + names[d] + '">';
+    var s = '<span class="diff" role="img" title="Difficulty: ' + names[d] + '" aria-label="Difficulty: ' + names[d] + '">';
     for (var i = 1; i <= 3; i++) s += '<i class="' + (i <= d ? 'on' : '') + '"></i>';
     return s + '</span>';
   }
 
-  function promptHeader(p, extra) {
+  function promptHeader(p) {
     return '<div class="eyebrow"><span class="inn">' + ordinal(G.cur + 1) + ' inning</span>' +
-      '<span>' + esc(CAT_LABEL[p.c] || '') + '</span>' + diffDots(p.d) + (extra || '') + '</div>';
+      '<span>' + esc(CAT_LABEL[p.c] || '') + '</span>' + diffDots(p.d) + '</div>';
   }
 
   function renderPitch() {
@@ -353,18 +561,27 @@
         '<p class="ask">Name a player who fits:</p>' +
         '<h2 class="prompt">' + esc(p.t) + '</h2>' +
         (p.s ? '<p class="sub">' + esc(p.s) + '</p>' : '') +
-        '<div class="clock" id="clock"><span class="clock-num" id="clock-num">' + CLOCK + '</span>' +
-          '<div class="clock-bar" aria-hidden="true"><div class="clock-fill" id="clock-fill"></div></div></div>' +
-        '<div class="search">' +
-          '<label for="guess">Your answer</label>' +
-          '<input id="guess" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" ' +
-            'placeholder="Start typing a player\'s name" role="combobox" aria-autocomplete="list" ' +
-            'aria-expanded="false" aria-controls="results">' +
-          '<ul class="results" id="results" role="listbox" aria-label="Matching players"></ul>' +
-        '</div>' +
+        '<div class="clock" id="clock"><span class="clock-num" id="clock-num" aria-hidden="true">' + CLOCK + '</span>' +
+          '<div class="clock-bar" aria-hidden="true"><div class="clock-fill" id="clock-fill"></div></div>' +
+          '<span class="sr-only" id="clock-sr" aria-live="polite"></span></div>' +
+        (G.hard
+          ? '<form class="search" id="hard-form" autocomplete="off">' +
+              '<label for="guess">Your answer <span class="hard-tag">Hard mode</span></label>' +
+              '<div class="hard-row"><input id="guess" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" ' +
+                'placeholder="Full name, then Enter" aria-describedby="hard-msg">' +
+              '<button class="btn primary" type="submit">Swing</button></div>' +
+              '<p class="hard-msg" id="hard-msg" aria-live="assertive"></p>' +
+            '</form>'
+          : '<div class="search">' +
+              '<label for="guess">Your answer</label>' +
+              '<input id="guess" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" ' +
+                'placeholder="Start typing a player\'s name" role="combobox" aria-autocomplete="list" ' +
+                'aria-expanded="false" aria-controls="results">' +
+              '<ul class="results" id="results" role="listbox" aria-label="Matching players"></ul>' +
+            '</div>') +
         '<div class="row"><button class="btn ghost small" id="btn-skip" type="button">Take the strikeout</button></div>' +
       '</article>';
-    wireSearch();
+    if (G.hard) wireHard(pi); else wireSearch();
     $('#btn-skip').addEventListener('click', function () { answer(-1, false); });
     locked = false;
     startClock();
@@ -375,6 +592,7 @@
   // ---------- pitch clock ----------
   function startClock() {
     stopClock();
+    var warned = false;
     var tick = function () {
       var left = Math.max(0, G.deadline - Date.now());
       var secs = Math.ceil(left / 1000);
@@ -382,6 +600,11 @@
       if (num) num.textContent = secs;
       if (fill) fill.style.transform = 'scaleX(' + (left / (CLOCK * 1000)) + ')';
       if (clock) clock.classList.toggle('hurry', secs <= 7);
+      if (!warned && secs <= 10 && left > 0) {
+        warned = true;
+        var sr = $('#clock-sr');
+        if (sr) sr.textContent = '10 seconds left';
+      }
       if (left <= 0) { stopClock(); answer(-1, true); }
     };
     tick();
@@ -396,7 +619,7 @@
     var used = usedPlayers();
 
     function draw() {
-      if (!input.value.trim()) { list.innerHTML = ''; input.setAttribute('aria-expanded', 'false'); return; }
+      if (!input.value.trim()) { list.innerHTML = ''; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); return; }
       if (!items.length) {
         list.innerHTML = input.value.trim().length >= 2 ? '<li class="none" role="option" aria-disabled="true">No player by that name</li>' : '';
         input.setAttribute('aria-expanded', String(!!list.innerHTML));
@@ -411,6 +634,8 @@
       }).join('');
       input.setAttribute('aria-expanded', 'true');
       input.setAttribute('aria-activedescendant', 'opt-' + sel);
+      var on = $('#opt-' + sel);
+      if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
     }
     function choose(pid) {
       if (pid == null || used.indexOf(pid) >= 0) return;
@@ -435,6 +660,44 @@
     });
   }
 
+  // ---------- hard mode: resolve a typed full name ----------
+  var SUFFIX_RE = /\s+(jr|sr|ii|iii|iv)$/;
+  function resolveName(raw, pi) {
+    var q = norm(raw);
+    if (!q) return { err: 'Type a player\'s full name first.' };
+    var bare = q.replace(SUFFIX_RE, '');
+    var cands = [];
+    for (var i = 0; i < SEARCH.length; i++) {
+      var n = SEARCH[i].n;
+      if (n === q || n.replace(SUFFIX_RE, '') === bare) cands.push(i);
+    }
+    var exact = cands.filter(function (i) { return SEARCH[i].n === q; });
+    if (exact.length) cands = exact;
+    if (!cands.length) return { err: 'No MLB player named “' + raw.trim() + '”. Check the spelling; the clock is still running.' };
+    var used = usedPlayers();
+    var fresh = cands.filter(function (i) { return used.indexOf(i) < 0; });
+    if (!fresh.length) return { err: raw.trim() + ' is already used in this game.' };
+    var valid = answersFor(pi);
+    var fits = fresh.filter(function (i) { return valid.has(i); });
+    return { pid: (fits.length ? fits : fresh)[0] }; // namesakes: the one who fits, else the best known
+  }
+
+  function wireHard(pi) {
+    var form = $('#hard-form'), input = $('#guess'), msg = $('#hard-msg');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var r = resolveName(input.value, pi);
+      if (r.err) {
+        msg.textContent = r.err;
+        input.classList.remove('shake');
+        void input.offsetWidth;
+        input.classList.add('shake');
+        return;
+      }
+      answer(r.pid, false);
+    });
+  }
+
   // ---------- scoring an answer ----------
   function answer(pid, timedOut) {
     if (locked || G.phase !== 'pitch') return;
@@ -442,11 +705,10 @@
     stopClock();
     var pi = promptAt(G.cur);
     var hit = pid >= 0 ? answersFor(pi).get(pid) : null;
-    var rec = {
+    G.inn[G.cur] = {
       p: pid, t: hit ? hit.t : -1, pts: hit ? TIERS[hit.t].pts : 0,
-      r: hit ? hit.r : 0, n: D.prompts[pi].a.length, timeout: !!timedOut
+      r: hit ? hit.r : 0, n: answerCount(pi), timeout: !!timedOut
     };
-    G.inn[G.cur] = rec;
     G.phase = 'result';
     persist();
     render();
@@ -479,14 +741,14 @@
     }).join('') + '</ul>';
   }
 
-  // Popular answers + the best-known home-run answers, for the reveal.
+  // Popular answers + the best-known answers from the rarest tier present.
   function highlights(pi) {
-    var a = D.prompts[pi].a;
+    var a = ans(pi);
     var common = [], deep = [];
     for (var i = 0; i < a.length && common.length < 5; i++) {
       if ((a[i] & 7) !== 1) common.push({ p: a[i] >> 3, t: a[i] & 7 });
     }
-    var best = 5;
+    var best = 3;
     for (var tt = 5; tt >= 3; tt--) {
       var any = false;
       for (var q = 0; q < a.length; q++) if ((a[q] & 7) === tt) { any = true; break; }
@@ -502,8 +764,8 @@
     var name = playerName(pid);
     var hint = esc(name) + ' (' + esc(playerMeta(pid)) + ") doesn't fit this prompt.";
     var twin = null;
-    answersFor(pi).forEach(function (v, k) { if (!twin && k !== pid && playerName(k) === name) twin = k; });
-    if (twin !== null) hint += ' Wrong one, though: the ' + esc(name) + ' who fits played ' + esc(playerMeta(twin).replace(/^[^·]*· /, '')) + '.';
+    answersFor(pi).forEach(function (v, k) { if (twin === null && k !== pid && playerName(k) === name) twin = k; });
+    if (twin !== null) hint += ' Wrong one, though: the ' + esc(name) + ' who fits played ' + esc(playerYears(twin)) + '.';
     return hint;
   }
 
@@ -531,7 +793,7 @@
     $('#stage').innerHTML =
       '<article class="card result">' +
         promptHeader(p) +
-        '<h2 class="prompt" style="font-size:clamp(1.3rem,4.4vw,1.75rem)">' + esc(p.t) + '</h2>' +
+        '<h2 class="prompt prompt-small">' + esc(p.t) + '</h2>' +
         '<div class="verdict">' + diamond(x.t) +
           '<div><span class="verdict-tier pop tier-' + t.key + '">' + t.label + '</span>' +
           '<span class="verdict-pts">+' + x.pts + ' ft</span>' +
@@ -560,9 +822,62 @@
   // ---------- final ----------
   function shareText() {
     var ft = totalFt();
-    var head = G.mode === 'daily' ? 'Moonshot Daily #' + G.num : 'Moonshot Unlimited';
+    var head = G.mode === 'unlimited'
+      ? 'Moonshot Unlimited' + (G.team ? ' (' + TEAM_NAMES[G.team] + ')' : G.cat ? ' (' + focusLabel(G.cat) + ')' : '')
+      : 'Moonshot Daily #' + G.num;
+    if (G.hard) head += ' · Hard mode';
     var squares = G.inn.map(function (x) { return tierOf(x.t).sq; }).join('');
     return head + ' · ' + ft + ' ft\n' + squares + '\n' + distanceLabel(ft);
+  }
+
+  // Overhead view of a ballpark with the game's total as one long fly ball.
+  function flightChart(ft, seed) {
+    var r = rng(seed || 1);
+    var ang = (r() * 24 - 12) * Math.PI / 180;   // a little off dead center
+    var S = 0.62;                                  // px per foot
+    var pt = function (dist, a) { return [Math.sin(a) * dist * S, -Math.cos(a) * dist * S]; };
+    var fenceAt = function (a) { return 330 + 70 * Math.cos(2 * a); };
+    var arc = function (fn, from, to) {
+      var out = [];
+      for (var i = 0; i <= 40; i++) {
+        var a = from + (to - from) * i / 40;
+        var q = pt(fn(a), a);
+        out.push(q[0].toFixed(1) + ',' + q[1].toFixed(1));
+      }
+      return out;
+    };
+    var q45 = Math.PI / 4;
+    var fence = arc(fenceAt, -q45, q45);
+    var deck = arc(function (a) { return fenceAt(a) + 85; }, -q45, q45);
+    var grass = 'M0,0 L' + fence.join(' L') + ' Z';
+    var stands = 'M' + fence.join(' L') + ' L' + deck.slice().reverse().join(' L') + ' Z';
+    var land = pt(Math.max(ft, 4), ang);
+    var dist = Math.hypot(land[0], land[1]);
+    var cx = land[0] / 2, cy = land[1] / 2 - Math.min(140, 40 + dist * 0.35);
+    var path = 'M0,0 Q' + cx.toFixed(1) + ',' + cy.toFixed(1) + ' ' + land[0].toFixed(1) + ',' + land[1].toFixed(1);
+    var rings = [200, 300, 500, 600, 700].map(function (d) {
+      var a = pt(d, -q45), b = pt(d, q45);
+      return '<path class="ring" d="M' + a[0].toFixed(1) + ',' + a[1].toFixed(1) + ' A' + (d * S) + ',' + (d * S) + ' 0 0 1 ' + b[0].toFixed(1) + ',' + b[1].toFixed(1) + '"/>' +
+        (d >= 500 ? '<text class="ring-lbl" x="' + (b[0] + 8).toFixed(1) + '" y="' + (b[1] + 8).toFixed(1) + '">' + d + '</text>' : '');
+    }).join('');
+    var fl = pt(330, q45), cf = pt(400, 0);
+    var diamondPts = [[0, 0], pt(90, q45), pt(127.3, 0), pt(90, -q45)].map(function (q) { return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join(' ');
+    var lineL = pt(720, -q45), lineR = pt(720, q45);
+    var labelY = Math.max(land[1] - 16, -720 * S + 10);
+    return '<svg class="park" viewBox="-330 -480 700 500" role="img" aria-label="Ballpark chart: the game\'s ' + ft + '-foot fly ball, ' + esc(distanceLabel(ft).toLowerCase()) + '">' +
+      '<path class="stands" d="' + stands + '"/>' +
+      '<path class="grass" d="' + grass + '"/>' +
+      rings +
+      '<line class="foul" x1="0" y1="0" x2="' + lineL[0].toFixed(1) + '" y2="' + lineL[1].toFixed(1) + '"/>' +
+      '<line class="foul" x1="0" y1="0" x2="' + lineR[0].toFixed(1) + '" y2="' + lineR[1].toFixed(1) + '"/>' +
+      '<polygon class="dirt" points="' + diamondPts + '"/>' +
+      '<polyline class="fence" points="' + fence.join(' ') + '"/>' +
+      '<text class="fence-lbl" x="' + (fl[0] + 10).toFixed(1) + '" y="' + (fl[1] + 26).toFixed(1) + '">330</text>' +
+      '<text class="fence-lbl" x="' + (cf[0] + 34).toFixed(1) + '" y="' + (cf[1] + 30).toFixed(1) + '">400</text>' +
+      '<path class="flight" d="' + path + '" pathLength="1"/>' +
+      '<circle class="ball" cx="' + land[0].toFixed(1) + '" cy="' + land[1].toFixed(1) + '" r="7"/>' +
+      '<text class="land-lbl" x="' + land[0].toFixed(1) + '" y="' + labelY.toFixed(1) + '" text-anchor="middle">' + ft + ' ft</text>' +
+    '</svg>';
   }
 
   function renderFinal() {
@@ -585,30 +900,42 @@
         '<div class="box-pts">' + x.pts + '</div>' +
       '</div>';
     }).join('');
-    var next = G.mode === 'daily'
-      ? '<p class="next-daily" id="next-daily"></p>'
-      : '';
+    var homers = G.inn.filter(function (x) { return x.t === 5; }).length;
+    var ks = G.inn.filter(function (x) { return x.t < 0; }).length;
+    var again = G.mode === 'daily' ? 'Play Unlimited' : G.mode === 'archive' ? 'Back to today' : 'New game';
     $('#stage').innerHTML =
       '<article class="card final">' +
-        '<div class="final-head">' +
-          '<div class="eyebrow"><span class="inn">' + (G.mode === 'daily' ? 'Daily #' + G.num : 'Unlimited #' + G.num) + '</span><span>Final</span></div>' +
-          '<div class="final-dist">' + ft + '<span>ft</span></div>' +
-          '<p class="final-label">' + esc(distanceLabel(ft)) + '</p>' +
-          '<p class="final-note">' + plural(G.inn.filter(function (x) { return x.t === 5; }).length, 'home run') + ', ' +
-            plural(G.inn.filter(function (x) { return x.t < 0; }).length, 'strikeout') + '. A perfect game is 700 ft.</p>' +
+        '<div class="final-grid">' +
+          '<div class="final-head">' +
+            '<div class="eyebrow"><span class="inn">' + esc(gameTitle()) + '</span><span>Final</span></div>' +
+            '<div class="final-dist">' + ft + '<span>ft</span></div>' +
+            '<p class="final-label">' + esc(distanceLabel(ft)) + '</p>' +
+            '<p class="final-note">' + plural(homers, 'home run') + ', ' + plural(ks, 'strikeout') + '. A perfect game is 700 ft.</p>' +
+          '</div>' +
+          flightChart(ft, hashStr(G.ids.join('|'))) +
         '</div>' +
         '<pre class="share-preview" id="share-text">' + esc(shareText()) + '</pre>' +
         '<div class="row"><button class="btn primary" id="btn-share" type="button">Copy result</button>' +
-          '<button class="btn" id="btn-again" type="button">' + (G.mode === 'daily' ? 'Play Unlimited' : 'New game') + '</button></div>' +
-        next +
+          '<button class="btn" id="btn-again" type="button">' + again + '</button>' +
+          (G.mode !== 'unlimited' ? '<button class="btn ghost" id="btn-past" type="button">Past dailies</button>' : '') +
+          '</div>' +
+        (G.mode === 'unlimited' ? '<div class="row">' + teamSelect('team-next', G.team || '') + catSelect('cat-next', G.cat || '') + '</div>' : '') +
+        (G.mode === 'daily' ? '<p class="next-daily" id="next-daily"></p>' : '') +
       '</article>' +
       '<article class="card"><div class="eyebrow"><span class="inn">Box score</span></div><div class="box">' + rows + '</div></article>';
     $('#btn-share').addEventListener('click', copyShare);
     $('#btn-again').addEventListener('click', function () {
       if (G.mode === 'daily') switchMode('unlimited');
-      else { G = unlimitedGame(true); render(); }
+      else if (G.mode === 'archive') switchMode('daily');
+      else { G = unlimitedGame(true); render(); window.scrollTo(0, 0); }
     });
-    Array.prototype.forEach.call(document.querySelectorAll('details.all'), function (d) {
+    var past = $('#btn-past');
+    if (past) past.addEventListener('click', openArchive);
+    var tn = $('#team-next');
+    if (tn) tn.addEventListener('change', function () { save('team', tn.value); });
+    var cn = $('#cat-next');
+    if (cn) cn.addEventListener('change', function () { save('cat', cn.value); });
+    $$('details.all').forEach(function (d) {
       d.addEventListener('toggle', function () { if (d.open && !d.dataset.filled) fillAll(d); });
     });
     if (G.mode === 'daily') tickNextDaily();
@@ -617,7 +944,7 @@
   function fillAll(d) {
     d.dataset.filled = '1';
     var pi = Number(d.dataset.pi), you = Number(d.dataset.you);
-    var a = D.prompts[pi].a;
+    var a = ans(pi);
     var filter = document.createElement('input');
     filter.className = 'filter';
     filter.type = 'search';
@@ -626,6 +953,8 @@
     filter.setAttribute('aria-label', 'Filter answers');
     var ul = document.createElement('ul');
     ul.className = 'all-list';
+    ul.tabIndex = 0; // scrollable, so keyboard users need to reach it
+    ul.setAttribute('aria-label', 'Valid answers, most common first');
     d.appendChild(filter);
     d.appendChild(ul);
     var LIMIT = 400;
@@ -640,7 +969,7 @@
         shown++;
         out.push('<li' + (pid === you ? ' class="you"' : '') + '><span class="rk">' + (i + 1) + '</span>' +
           '<span class="dot tier-' + TIERS[t].key + '" title="' + TIERS[t].label + '"></span>' + esc(playerName(pid)) +
-          '<span class="yrs">' + esc(playerMeta(pid).replace(/^[^·]*· /, '')) + '</span></li>');
+          '<span class="yrs">' + esc(playerYears(pid)) + '</span></li>');
       }
       if (matched > shown) out.push('<li class="rk">…and ' + fmt(matched - shown) + ' more. Filter to find them.</li>');
       if (!matched) out.push('<li class="rk">No matches.</li>');
@@ -653,7 +982,6 @@
   var nextTimer = null;
   function tickNextDaily() {
     clearInterval(nextTimer);
-    var el = $('#next-daily');
     var f = function () {
       var e = $('#next-daily');
       if (!e) { clearInterval(nextTimer); return; }
@@ -662,7 +990,8 @@
       e.textContent = 'Next daily game in ' + h + 'h ' + String(m).padStart(2, '0') + 'm ' + String(s).padStart(2, '0') + 's.';
       if (ms < 1000) { clearInterval(nextTimer); setTimeout(function () { if (MODE === 'daily') { G = dailyGame(); render(); } }, 1500); }
     };
-    if (el) { f(); nextTimer = setInterval(f, 1000); }
+    f();
+    nextTimer = setInterval(f, 1000);
   }
 
   function copyShare() {
@@ -675,7 +1004,7 @@
       var sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(range);
-      toast('Copy blocked here. The result is selected; copy it yourself.');
+      toast('Copy is blocked here. The result is selected, so copy it yourself.');
     };
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
@@ -684,14 +1013,22 @@
   }
 
   // ------------------------------------------------------------------
-  // Stats
+  // Stats + history
   // ------------------------------------------------------------------
+  function blankStats() { return { played: 0, total: 0, best: 0, streak: 0, maxStreak: 0, last: 0, tiers: [0, 0, 0, 0, 0, 0, 0] }; }
+
   function recordFinish() {
     if (G.recorded) return;
     G.recorded = true;
     var ft = totalFt();
+    var squares = G.inn.map(function (x) { return tierOf(x.t).sq; }).join('');
+    if (G.mode === 'daily' || G.mode === 'archive') {
+      var hist = load('history', {});
+      if (!hist[G.num]) hist[G.num] = { ft: ft, sq: squares, archive: G.mode === 'archive' };
+      save('history', hist);
+    }
     if (G.mode === 'daily') {
-      var s = load('stats', { played: 0, total: 0, best: 0, streak: 0, maxStreak: 0, last: 0, tiers: [0, 0, 0, 0, 0, 0, 0] });
+      var s = load('stats', blankStats());
       s.played++;
       s.total += ft;
       s.best = Math.max(s.best, ft);
@@ -700,7 +1037,7 @@
       s.last = G.num;
       G.inn.forEach(function (x) { s.tiers[x.t < 0 ? 6 : x.t]++; });
       save('stats', s);
-    } else {
+    } else if (G.mode === 'unlimited') {
       var u = load('ustats', { played: 0, best: 0, total: 0 });
       u.played++;
       u.total += ft;
@@ -710,11 +1047,11 @@
   }
 
   function openStats() {
-    var s = load('stats', { played: 0, total: 0, best: 0, streak: 0, maxStreak: 0, last: 0, tiers: [0, 0, 0, 0, 0, 0, 0] });
+    var s = load('stats', blankStats());
     var u = load('ustats', { played: 0, best: 0, total: 0 });
     var avg = s.played ? Math.round(s.total / s.played) : 0;
     var streak = s.last >= todayNum() - 1 ? s.streak : 0;
-    var labels = TIERS.map(function (t) { return t; }).concat([K]);
+    var labels = TIERS.concat([K]);
     var max = Math.max.apply(null, s.tiers.concat([1]));
     var bars = labels.map(function (t, i) {
       return '<div class="bar"><span>' + t.label + '</span><div class="track"><div class="fill tier-' + t.key +
@@ -727,15 +1064,43 @@
         '<div><b>' + s.best + '</b><span>Best ft</span></div>' +
         '<div><b>' + streak + '</b><span>Streak</span></div>' +
       '</div>' +
-      '<div class="bars" aria-label="Results by type, all daily innings">' + bars + '</div>' +
-      '<p class="fine">Unlimited: ' + u.played + ' games, best ' + u.best + ' ft' +
+      '<div class="bars" role="group" aria-label="Results by type, all daily innings">' + bars + '</div>' +
+      '<p class="fine">Longest streak: ' + s.maxStreak + '. Unlimited: ' + plural(u.played, 'game') + ', best ' + u.best + ' ft' +
         (u.played ? ', average ' + Math.round(u.total / u.played) + ' ft' : '') + '. Stats live in this browser only.</p>';
     showDialog($('#dlg-stats'));
   }
 
+  function openArchive() {
+    var today = todayNum();
+    var hist = load('history', {});
+    var items = [];
+    for (var n = today; n >= Math.max(1, today - 59); n--) {
+      var h = hist[n];
+      items.push('<li><button type="button" class="arch" data-num="' + n + '">' +
+        '<span class="arch-num">#' + n + '</span><span class="arch-date">' + esc(dateOfNum(n)) + (n === today ? ' · today' : '') + '</span>' +
+        '<span class="arch-res">' + (h ? esc(h.sq) + ' <b>' + h.ft + ' ft</b>' : 'Not played') + '</span></button></li>');
+    }
+    $('#archive-body').innerHTML = (today === 1
+      ? '<p class="fine">Moonshot launched today, so the archive starts here. Come back tomorrow to replay past dailies.</p>' : '') +
+      '<ul class="arch-list">' + items.join('') + '</ul>';
+    $$('#archive-body .arch').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var n = Number(b.dataset.num);
+        closeDialog($('#dlg-archive'));
+        persist();
+        if (n === today) { switchMode('daily'); return; }
+        MODE = 'daily';
+        G = dailyGame(n);
+        resumeOrRender();
+        window.scrollTo(0, 0);
+      });
+    });
+    showDialog($('#dlg-archive'));
+  }
+
   function openHelp() {
     $('#tier-rows').innerHTML = TIERS.concat([K]).map(function (t) {
-      var what = t.key === 'k' ? "Wrong player, already used, or the clock ran out." : t.blurb;
+      var what = t.key === 'k' ? 'Wrong player, a repeat, or the clock ran out.' : t.blurb;
       return '<tr><td><span class="chip tier-' + t.key + '">' + t.label + '</span></td><td>' + t.pts + '</td><td>' + esc(what) + '</td></tr>';
     }).join('');
     showDialog($('#dlg-help'));
@@ -747,6 +1112,10 @@
     }
     d.setAttribute('open', '');
   }
+  function closeDialog(d) {
+    if (typeof d.close === 'function') { try { d.close(); return; } catch (e) { /* fall through */ } }
+    d.removeAttribute('open');
+  }
 
   // ------------------------------------------------------------------
   // Modes + boot
@@ -757,6 +1126,7 @@
     save('mode', mode);
     G = mode === 'daily' ? dailyGame() : unlimitedGame(false);
     resumeOrRender();
+    window.scrollTo(0, 0);
   }
 
   // A reload mid-inning keeps the original pitch clock running.
@@ -775,23 +1145,31 @@
       return;
     }
     indexData();
+    window.MoonshotDebug = {
+      dailyIds: dailyIds, randomIds: randomIds, search: search, todayNum: todayNum, resolveName: resolveName,
+      answers: function (id) { return Array.prototype.slice.call(ans(PROMPT_INDEX[id])); }
+    };
     $('#daily-num').textContent = '#' + todayNum();
     $('#thru').textContent = D.meta.through;
     $('#bank-size').textContent = fmt(D.meta.prompts) + ' prompts · ' + fmt(D.meta.answers) + ' valid answers · ' + fmt(D.meta.players) + ' players.';
-    $('#mode-daily').addEventListener('click', function () { if (MODE !== 'daily') switchMode('daily'); });
+    $('#mode-daily').addEventListener('click', function () { if (MODE !== 'daily' || G.mode === 'archive') switchMode('daily'); });
     $('#mode-unlimited').addEventListener('click', function () { if (MODE !== 'unlimited') switchMode('unlimited'); });
     $('#btn-help').addEventListener('click', openHelp);
     $('#btn-stats').addEventListener('click', openStats);
+    $('#btn-archive').addEventListener('click', openArchive);
 
     MODE = load('mode', 'daily') === 'unlimited' ? 'unlimited' : 'daily';
-    if (hotData && hotData.G && hotData.G.ids && validIds(hotData.G.ids)) {
+    if (hotData && hotData.G && validIds(hotData.G.ids)) {
       G = hotData.G;
-      MODE = G.mode;
+      MODE = G.mode === 'unlimited' ? 'unlimited' : 'daily';
     } else {
       G = MODE === 'daily' ? dailyGame() : unlimitedGame(false);
     }
-    if (!load('seenHelp', false)) { save('seenHelp', true); }
     resumeOrRender();
+    if (!load('seenHelp', false)) {
+      save('seenHelp', true);
+      openHelp();
+    }
   }
 
   var hot = window.claude && window.claude.hot;

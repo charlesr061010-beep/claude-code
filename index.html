@@ -26,6 +26,9 @@
       <button type="button" class="icon-btn" id="btn-stats" aria-label="Your stats" title="Your stats">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V4M19 20v-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
       </button>
+      <button type="button" class="icon-btn" id="btn-archive" aria-label="Past daily games" title="Past daily games">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
       <button type="button" class="icon-btn" id="btn-help" aria-label="How to play" title="How to play">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="12" cy="17" r="1.25" fill="currentColor"/></svg>
       </button>
@@ -54,12 +57,13 @@
       <li><strong>Go deep.</strong> Every correct answer scores, but rare answers fly farther. Your total is your distance in feet; 700 ft is perfect.</li>
       <li><strong>Pitch clock: 30 seconds.</strong> Run out of time or name someone who doesn't fit and it's a strikeout.</li>
       <li><strong>One at-bat per player.</strong> You can't use the same player twice in a game.</li>
+      <li><strong>Daily or Unlimited.</strong> Everyone gets the same daily game, and its prompts don't repeat for months. Unlimited deals new games forever and can focus on one team.</li>
     </ol>
     <table class="tier-table">
       <thead><tr><th scope="col">Result</th><th scope="col">Feet</th><th scope="col">What it means</th></tr></thead>
       <tbody id="tier-rows"></tbody>
     </table>
-    <p class="fine">A new daily game starts at midnight your time. Unlimited deals a fresh game whenever you want one. Team prompts count the whole franchise: Expos seasons count for the Nationals, Brooklyn for the Dodgers.</p>
+    <p class="fine">A new daily game starts at midnight your time. Team prompts count the whole franchise: Expos seasons count for the Nationals, Brooklyn for the Dodgers. "With the team" means the honor came while he played there; "and won" means with any team.</p>
     <button class="btn primary" value="close">Got it</button>
   </form>
 </dialog>
@@ -68,6 +72,15 @@
   <form method="dialog" class="dlg-inner">
     <h2 id="stats-title">Your daily stats</h2>
     <div id="stats-body"></div>
+    <button class="btn primary" value="close">Close</button>
+  </form>
+</dialog>
+
+<dialog id="dlg-archive" class="dlg" aria-labelledby="archive-title">
+  <form method="dialog" class="dlg-inner">
+    <h2 id="archive-title">Past dailies</h2>
+    <p class="fine">Replay any of the last 60 daily games. Replays don't count toward your streak.</p>
+    <div id="archive-body"></div>
     <button class="btn primary" value="close">Close</button>
   </form>
 </dialog>

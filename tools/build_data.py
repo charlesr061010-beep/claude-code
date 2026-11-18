@@ -122,7 +122,7 @@ STATES = {
     "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland", "MA": "Massachusetts",
     "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi", "MO": "Missouri", "MT": "Montana",
     "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico",
-    "NY": "New York", "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma",
+    "NY": "New York State", "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma",
     "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina",
     "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah", "VT": "Vermont",
     "VA": "Virginia", "WA": "Washington State", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
@@ -135,9 +135,9 @@ WORD_LISTS = {
     "color": ("Last name is a color", "Plain color words; Greene and Grey count — e.g. Brown, White, Rose",
               {"Black", "Blue", "Brown", "Gold", "Gray", "Grey", "Green", "Greene", "Pink", "Red", "Rose",
                "Scarlet", "Silver", "Tan", "White", "Orange", "Violet", "Amber", "Ivory", "Coral",
-               "Lavender", "Indigo", "Crimson", "Maroon", "Navy", "Peach", "Plum", "Ruby", "Teal",
-               "Lemon", "Cherry", "Copper", "Bronze", "Sage", "Khaki", "Beige", "Magenta", "Cyan",
-               "Azure", "Burgundy", "Mauve", "Olive", "Emerald", "Jade", "Rust", "Sable"}),
+               "Lavender", "Indigo", "Crimson", "Maroon", "Navy", "Teal",
+               "Copper", "Bronze", "Khaki", "Beige", "Magenta", "Cyan",
+               "Azure", "Burgundy", "Mauve", "Emerald", "Jade"}),
     "animal": ("Last name is an animal", "Any creature — e.g. Trout, Salmon, Fox, Bird, Martin (the bird)",
                {"Trout", "Salmon", "Bass", "Pike", "Fox", "Wolf", "Bird", "Crane", "Lamb", "Finch",
                 "Martin", "Drake", "Hare", "Hart", "Buck", "Crow", "Swan", "Moose", "Hawk", "Hawks",
@@ -170,6 +170,20 @@ WORD_LISTS = {
              "Logger", "Rancher", "Waiter", "Cobbler", "Tailor", "Bailiff", "Abbot", "Brewster",
              "Plummer", "Chaplain", "Coach", "Scout", "Batman", "Major", "General", "Colonel", "Captain",
              "Admiral", "Squire", "Steele"}.difference({"Steele"})),
+    "food": ("Last name is a food", "Anything you'd eat or drink — e.g. Rice, Berry, Bean, Lamb, Salmon",
+             {"Rice", "Bean", "Beans", "Berry", "Pepper", "Peppers", "Ham", "Cherry", "Salt", "Sugar", "Honey",
+              "Bacon", "Mustard", "Butter", "Bread", "Cookie", "Cake", "Pie", "Apple", "Peach", "Plum", "Lemon",
+              "Lime", "Olive", "Onion", "Pickle", "Sausage", "Steak", "Rye", "Wheat", "Corn", "Oats", "Hash",
+              "Cream", "Curry", "Basil", "Sage", "Ginger", "Mint", "Almond", "Pecan", "Walnut", "Chestnut",
+              "Grape", "Melon", "Lamb", "Salmon", "Trout", "Bass", "Cod", "Haddock", "Herring", "Perch", "Pike",
+              "Mackerel", "Turkey", "Biscuit", "Muffin", "Bun", "Waffle", "Candy", "Fudge", "Toffee", "Jelly",
+              "Jam", "Port", "Wine", "Rum", "Brandy", "Cider", "Coffee", "Tea", "Cocoa", "Gravy", "Stew",
+              "Chili", "Taco", "Burger", "Hamburger", "Frank", "Bologna", "Salami", "Pepperoni", "Chowder",
+              "Noodle", "Rice", "Barley", "Bran", "Crumb", "Crust", "Dumpling", "Pudding", "Custard",
+              "Truffle", "Kale", "Leek", "Pea", "Peas", "Radish", "Beet", "Fig", "Date", "Dates", "Nutt",
+              "Nut", "Nuts", "Cashew", "Mango", "Papaya", "Kiwi", "Berries", "Squash", "Cabbage", "Bacon",
+              "Veal", "Beef", "Pork", "Chicken", "Duck", "Goose", "Quail", "Egg", "Eggs", "Cheese", "Brie",
+              "Feta", "Butter", "Milk", "Malt", "Hops", "Yeast", "Vinegar", "Oil", "Fry", "Roast", "Grill"}),
     "president": ("Shares a last name with a U.S. president", "Washington through Trump — e.g. Johnson, Adams, Ford",
                   {"Washington", "Adams", "Jefferson", "Madison", "Monroe", "Jackson", "Van Buren", "Harrison",
                    "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson",
@@ -240,15 +254,13 @@ FIRST_NAMES = [  # (label, variants on nameFirst / first given name)
 
 # Players who are famous *because* they were obscure, unusual or briefly
 # somewhere: everyone thinks they're a deep cut, so they score "Too Cute".
-TOO_CUTE_NAMES = [
-    ("Eddie", "Gaedel"), ("Moonlight", "Graham"), ("Bob", "Uecker"), ("Crash", "Davis"), ("Jim", "Abbott"),
-    ("Rick", "Ankiel"), ("Mark", "Fidrych"), ("Bo", "Jackson"), ("Deion", "Sanders"), ("Pete", "Gray"),
-    ("Jim", "Morris"), ("Joe", "Nuxhall"), ("Chuck", "Connors"), ("Jim", "Thorpe"), ("Mario", "Mendoza"),
-    ("Bucky", "Dent"), ("Bill", "Buckner"), ("Mitch", "Williams"), ("Steve", "Blass"), ("Ralph", "Branca"),
-    ("Bobby", "Thomson"), ("Don", "Larsen"), ("Harvey", "Haddix"), ("Armando", "Galarraga"),
-    ("Kurt", "Bevacqua"), ("Bartolo", "Colon"), ("Jamie", "Moyer"), ("Minnie", "Minoso"),
-    ("John", "Rocker"), ("Dock", "Ellis"), ("Bill", "Lee"), ("Hideki", "Irabu"), ("Kei", "Igawa"),
-]
+TOO_CUTE_NAMES = """Eddie Gaedel:1951, Moonlight Graham:1905, Bob Uecker:1962, Crash Davis:1940,
+Jim Abbott:1989, Rick Ankiel:1999, Mark Fidrych:1976, Bo Jackson:1986, Deion Sanders:1989, Pete Gray:1945,
+Jim Morris:1999, Joe Nuxhall:1944, Chuck Connors:1949, Jim Thorpe:1913, Mario Mendoza:1974, Bucky Dent:1973,
+Bill Buckner:1969, Mitch Williams:1986, Steve Blass:1964, Ralph Branca:1944, Bobby Thomson:1946,
+Don Larsen:1953, Harvey Haddix:1952, Armando Galarraga:2008, Kurt Bevacqua:1971, Bartolo Colon:1997,
+Jamie Moyer:1986, Minnie Minoso:1949, John Rocker:1998, Dock Ellis:1968, Bill Lee:1969, Hideki Irabu:1997,
+Kei Igawa:2007"""
 
 # Editorial fame floors for players whose cultural footprint outruns what the
 # box-score model can see (pre-All-Star-Game legends, crossover celebrities).
@@ -286,7 +298,9 @@ Jorge Posada:1995, Andy Pettitte:1995, Paul O'Neill:1985, Curt Schilling:1988, T
 John Smoltz:1988, Trevor Hoffman:1993, Bryce Harper:2012, Giancarlo Stanton:2010, Corey Seager:2015,
 Jacob deGrom:2014, Zack Greinke:2004, Felix Hernandez:2005, Roy Halladay:1998, Carlos Correa:2015,
 Hideki Matsui:2003, Hideo Nomo:1995, Yu Darvish:2012, Josh Gibson:1930, Oscar Charleston:1920,
-Buck Leonard:1934, Cool Papa Bell:1922, Ken Griffey:1973, Moises Alou:1990, Felipe Alou:1958"""
+Buck Leonard:1934, Cool Papa Bell:1922, Ken Griffey:1973, Moises Alou:1990, Felipe Alou:1958,
+Joe Carter:1983, Jose Bautista:2004, Bobby Bonds:1968, Kirk Gibson:1979,
+Darryl Strawberry:1983, Pete Rose:1963"""
 
 
 def parse_icons(text):
@@ -298,6 +312,22 @@ def parse_icons(text):
             out.append((name.strip(), int(yr)))
     return out
 
+
+TEAMMATE_OF = [(n.strip(), int(y)) for n, y in (x.rsplit(":", 1) for x in """
+Derek Jeter:1995, Shohei Ohtani:2018, Aaron Judge:2016, Mike Trout:2011, Ichiro Suzuki:2001, Ken Griffey:1989,
+Barry Bonds:1986, Babe Ruth:1914, Mickey Mantle:1951, Willie Mays:1951, Hank Aaron:1954, Jackie Robinson:1947,
+Roberto Clemente:1955, Cal Ripken:1981, Albert Pujols:2001, David Ortiz:1997, Mariano Rivera:1995,
+Nolan Ryan:1966, Pete Rose:1963, Clayton Kershaw:2008, Justin Verlander:2005, Max Scherzer:2008,
+Greg Maddux:1986, Randy Johnson:1988, Pedro Martinez:1992, Alex Rodriguez:1994, Roger Clemens:1984,
+Tony Gwynn:1982, Rickey Henderson:1979, Ted Williams:1939, Sandy Koufax:1955, Stan Musial:1941,
+Ernie Banks:1953, Johnny Bench:1967, Mike Schmidt:1972, George Brett:1973, Kirby Puckett:1984,
+Sammy Sosa:1989, Mark McGwire:1986, Chipper Jones:1993, Jim Thome:1991, Mookie Betts:2014, Bryce Harper:2012,
+Juan Soto:2018, Jose Altuve:2011, Buster Posey:2009, Yadier Molina:2004, Joey Votto:2007, Miguel Cabrera:2003,
+Freddie Freeman:2010, Francisco Lindor:2015, Ronald Acuna:2018, Lou Gehrig:1923, Ty Cobb:1905,
+Joe DiMaggio:1936, Yogi Berra:1946, Reggie Jackson:1967, Tom Seaver:1967, Bob Gibson:1959, Satchel Paige:1948,
+Bo Jackson:1986, Fernando Valenzuela:1980, Vladimir Guerrero:2019, Fernando Tatis:2019, Bobby Witt:2022,
+Paul Skenes:2024, Cal Raleigh:2021, Zack Greinke:2004, Jacob deGrom:2014, Manny Ramirez:1993
+""".replace("\n", " ").split(",") if x.strip())]
 
 TIERS = [
     # key, label, points, max estimated pick share (None = catch-all)
@@ -313,6 +343,17 @@ T_BUNT, T_CUTE, T_SINGLE, T_DOUBLE, T_TRIPLE, T_HR = range(6)
 SHARE_BUNT, SHARE_SINGLE, SHARE_DOUBLE, SHARE_TRIPLE = 0.03, 0.008, 0.002, 0.0004
 SOFTMAX_TAU = 9.0   # fame points per e-fold of pick share
 ASSOC_GAMMA = 3.0   # how hard prompt association (team share, repeat feats) bends the share
+
+# Display suffixes for famous namesakes, so answer lists and prompts can tell
+# them apart: "First Last:debut year:suffix".
+SUFFIXES = [x.strip().rsplit(":", 2) for x in """
+Ken Griffey:1989:Jr., Ken Griffey:1973:Sr., Vladimir Guerrero:2019:Jr., Fernando Tatis:2019:Jr.,
+Fernando Tatis:1997:Sr., Bobby Witt:2022:Jr., Bobby Witt:1986:Sr., Cal Ripken:1981:Jr.,
+Ronald Acuna:2018:Jr., Lance McCullers:2015:Jr., Lance McCullers:1985:Sr., Jackie Bradley:2013:Jr.,
+Lourdes Gurriel:2018:Jr., Jazz Chisholm:2020:Jr., Luis Robert:2020:Jr., Sandy Alomar:1988:Jr.,
+Sandy Alomar:1964:Sr., Pete Rose:1997:Jr., Tim Raines:2001:Jr., Michael Harris:2022:II,
+Jose Cruz:1997:Jr., Tony Gwynn:2006:Jr., Gary Matthews:1999:Jr., Gary Matthews:1972:Sr.,
+Eric Young:2009:Jr., Eric Young:1992:Sr., Delino DeShields:2015:Jr., Delino DeShields:1990:Sr.""".replace("\n", " ").split(",") if x.strip()]
 
 # 2026 Hall of Fame class (elected after the Lahman snapshot was taken).
 HOF_2026 = [("Carlos", "Beltran"), ("Andruw", "Jones"), ("Jeff", "Kent")]
@@ -357,32 +398,52 @@ class DB:
 # Load + aggregate
 # --------------------------------------------------------------------------
 
+TEAMINFO = {}  # (year, teamID) -> W, L, franchise, league, pennant flag, name
+
+# Leagues MLB officially recognizes as major leagues. Lahman also carries the
+# 1871-75 National Association (lgID "NA", which reads back as null) and
+# independent Black clubs from before 1920 (IND, WES, EAS, NAC, INT); MLB
+# counts neither, so neither do we. Negro Leagues count from 1920 to 1948.
+MLB_LEAGUES = {"NL", "AL", "AA", "UA", "PL", "FL", "NNL", "ECL", "ANL", "NSL", "EWL", "NN2", "NAL"}
+
+
 def build(data_dir):
     db = DB(data_dir)
     teams = db.rows("Teams")
     people = {r["playerID"]: r for r in db.rows("People")}
-    appearances = db.rows("Appearances")
-    batting = db.rows("Batting")
-    pitching = db.rows("Pitching")
+    keep = lambda rows: [r for r in rows if r.get("lgID") in MLB_LEAGUES]
+    appearances = keep(db.rows("Appearances"))
+    batting = keep(db.rows("Batting"))
+    pitching = keep(db.rows("Pitching"))
     awards = db.rows("AwardsPlayers")
-    allstar = db.rows("AllstarFull")
+    # The All-Star Game is AL vs NL; East-West and North-South games are separate.
+    allstar = [r for r in db.rows("AllstarFull") if r["lgID"] in ("AL", "NL")]
     hof = db.rows("HallOfFame")
-    batpost = db.rows("BattingPost")
-    pitpost = db.rows("PitchingPost")
+    # Postseason: modern AL/NL play only (1903 on).
+    batpost = [r for r in db.rows("BattingPost") if r["lgID"] in ("AL", "NL") and r["yearID"] >= 1903]
+    pitpost = [r for r in db.rows("PitchingPost") if r["lgID"] in ("AL", "NL") and r["yearID"] >= 1903]
+
+    managers = [r for r in db.rows("Managers") if r.get("lgID") in MLB_LEAGUES]
+    TEAMINFO.clear()
+    for t in teams:
+        if t["lgID"] in MLB_LEAGUES:
+            TEAMINFO[(t["yearID"], t["teamID"])] = {
+                "W": t["W"] or 0, "L": t["L"] or 0, "fr": t["franchID"], "lg": t["lgID"],
+                "pennant": t["LgWin"] == "Y" and t["lgID"] in ("AL", "NL") and t["yearID"] >= 1903,
+                "ws": t["WSWin"] == "Y" and t["lgID"] in ("AL", "NL") and t["yearID"] >= 1903,
+                "name": t["name"]}
 
     franch_of = {}           # (year, teamID) -> franchID
     team_name = {}           # (year, teamID) -> name
-    ws_winner = set()        # (year, teamID)
-    sched = defaultdict(list)
+    team_G = {}              # (year, teamID) -> games played (rate-stat qualification)
+    ws_winner = set()        # (year, teamID): modern World Series champions only
     for t in teams:
         k = (t["yearID"], t["teamID"])
         franch_of[k] = t["franchID"]
         team_name[k] = t["name"]
-        if t["WSWin"] == "Y":
+        team_G[k] = t["G"] or 0
+        if t["WSWin"] == "Y" and t["lgID"] in ("AL", "NL") and t["yearID"] >= 1903:
             ws_winner.add(k)
-        if t["lgID"] in ("AL", "NL"):
-            sched[t["yearID"]].append(t["G"] or 0)
-    sched = {y: sorted(g)[len(g) // 2] for y, g in sched.items()}
 
     # ---- players ---------------------------------------------------------
     P = {}
@@ -396,6 +457,8 @@ def build(data_dir):
                 "bat": Counter(), "pit": Counter(), "bat_season": {}, "pit_season": {},
                 "bat_fr_season": {}, "pit_fr_season": {},
                 "awards": [], "allstar": [], "ws": set(), "post": Counter(),
+                "qg": Counter(), "qg_fr": Counter(), "teams": set(), "award_pos": [],
+                "bat_lg": {}, "pit_lg": {}, "qg_lg": Counter(), "managed": [],
             }
         return P[pid]
 
@@ -408,6 +471,7 @@ def build(data_dir):
             continue
         p = player(pid)
         y = a["yearID"]
+        p["teams"].add(k)
         p["years"].add(y)
         p["G"] += g
         p["fr_G"][fr] += g
@@ -434,9 +498,14 @@ def build(data_dir):
         p = P[pid]
         y = b["yearID"]
         fr = franch_of.get((y, b["teamID"]))
+        tg = team_G.get((y, b["teamID"]), 0)
+        p["qg"][y] = max(p["qg"][y], tg)
+        p["qg_fr"][(y, fr)] = max(p["qg_fr"][(y, fr)], tg)
         vals = {c: z(b[c]) for c in BAT}
         vals["PA"] = vals["AB"] + vals["BB"] + vals["HBP"] + vals["SH"] + vals["SF"]
         p["bat"].update(vals)
+        p["bat_lg"].setdefault((y, b["lgID"]), Counter()).update(vals)
+        p["qg_lg"][(y, b["lgID"])] = max(p["qg_lg"][(y, b["lgID"])], tg)
         p["bat_season"].setdefault(y, Counter()).update(vals)
         p["bat_fr_season"].setdefault((y, fr), Counter()).update(vals)
         if b["stint"] == 1:
@@ -450,8 +519,13 @@ def build(data_dir):
         p = P[pid]
         y = r["yearID"]
         fr = franch_of.get((y, r["teamID"]))
+        tg = team_G.get((y, r["teamID"]), 0)
+        p["qg"][y] = max(p["qg"][y], tg)
+        p["qg_fr"][(y, fr)] = max(p["qg_fr"][(y, fr)], tg)
         vals = {c: z(r.get(c, r.get("IPOuts") if c == "IPouts" else 0)) for c in PIT}
         p["pit"].update(vals)
+        p["pit_lg"].setdefault((y, r["lgID"]), Counter()).update(vals)
+        p["qg_lg"][(y, r["lgID"])] = max(p["qg_lg"][(y, r["lgID"])], tg)
         p["pit_season"].setdefault(y, Counter()).update(vals)
         p["pit_fr_season"].setdefault((y, fr), Counter()).update(vals)
         if r["stint"] == 1:
@@ -484,6 +558,12 @@ def build(data_dir):
         if a["playerID"] in P:
             p = P[a["playerID"]]
             p["awards"].append((a["awardID"], a["yearID"], main_franch(p, a["yearID"])))
+            if a["notes"]:
+                p["award_pos"].append((a["awardID"], a["yearID"], a["notes"]))
+    for m in managers:
+        if m["playerID"] in P:
+            P[m["playerID"]]["managed"].append(
+                (m["yearID"], franch_of.get((m["yearID"], m["teamID"])), m["plyrMgr"] == "Y", m["teamID"]))
     for a in allstar:
         if a["playerID"] in P:
             fr = franch_of.get((a["yearID"], a["teamID"]))
@@ -515,7 +595,7 @@ def build(data_dir):
         p["first"] = (pp.get("nameFirst") or "").strip()
         p["last"] = (pp.get("nameLast") or "").strip()
         p["given"] = (pp.get("nameGiven") or "").strip()
-        p["name"] = f'{p["first"]} {p["last"]}'.strip()
+        p["name"] = p["base_name"] = f'{p["first"]} {p["last"]}'.strip()
         p["y0"], p["y1"] = min(p["years"]), max(p["years"])
         d = pp.get("debut")
         p["mlb_debut"] = d.year if d else None
@@ -542,13 +622,28 @@ def build(data_dir):
         p["n_allstar"] = len({y for y, _ in p["allstar"]})
         p["n_ws"] = len(p["ws"])
 
+    for name, yr, suffix in SUFFIXES:
+        if suffix:
+            for p in match_icon(P, name, int(yr)):
+                p["name"] = f'{p["name"]} {suffix}'
     compute_fame(P)
-    return P, people, sched
+    return P, people
 
 
 # --------------------------------------------------------------------------
 # Fame model
 # --------------------------------------------------------------------------
+
+def match_icon(P, name, yr):
+    """Players named `name` whose MLB debut was `yr` (else whose career spans it)."""
+    same = [p for p in P.values() if ascii_fold(p["base_name"]) == ascii_fold(name)]
+    hits = [p for p in same if p.get("mlb_debut") == yr]
+    if not hits:
+        hits = [p for p in same if p["y0"] - 1 <= yr <= p["y1"]][:1]
+    if not hits:
+        print("  ! name not found:", name, yr, file=sys.stderr)
+    return hits
+
 
 def compute_fame(P):
     for p in P.values():
@@ -576,13 +671,7 @@ def compute_fame(P):
         p["fame"] = 20 * math.log1p(v / 4)
     for tier, (floor, bump) in ((ICONS_S, (80, 3)), (ICONS_A, (70, 1))):
         for name, yr in parse_icons(tier):
-            same = [p for p in P.values() if ascii_fold(p["name"]) == name]
-            hits = [p for p in same if p.get("mlb_debut") == yr]
-            if not hits:
-                hits = [p for p in same if p["y0"] - 1 <= yr <= p["y1"]][:1]
-            if not hits:
-                print("  ! icon not found:", name, yr, file=sys.stderr)
-            for p in hits:
+            for p in match_icon(P, name, yr):
                 p["fame"] = max(p["fame"], floor) + bump
     ranked = sorted(P.values(), key=lambda p: -p["fame"])
     for i, p in enumerate(ranked):
@@ -599,21 +688,47 @@ class Bank:
         self.prompts = []
         self.ids = set()
 
-    def add(self, pid, text, sub, cat, answers, team=None, extra=None, min_n=8):
-        """answers: dict playerID -> association multiplier (0..~1.5)."""
+    def add(self, pid, text, sub, cat, answers, team=None, extra=None, min_n=8, cameo=None):
+        """answers: dict playerID -> association multiplier (0..~1.5).
+        cameo: players who fit only through a brief, famous detour (Too Cute candidates)."""
         if pid in self.ids:
             raise ValueError("duplicate prompt id " + pid)
         if len(answers) < min_n:
             return False
         self.ids.add(pid)
         self.prompts.append({"id": pid, "text": text, "sub": sub, "cat": cat, "answers": answers,
-                             "team": team, "extra": extra or {}})
+                             "team": team, "extra": extra or {}, "cameo": cameo or set()})
         return True
 
 
+def assoc_share(share):
+    """How strongly a player reads as belonging to a slice of his career (0.15..1)."""
+    return 0.15 + 0.85 * math.sqrt(min(1.0, share))
+
+
+FRANCHISE_RANK = {}  # (playerID, franchID) -> rank by games played for the franchise
+
+
+def rank_franchise_legends(P):
+    by = defaultdict(list)
+    for p in P.values():
+        for fr, g in p["fr_G"].items():
+            if fr in FRANCHISES and g:
+                by[fr].append((g, p["id"]))
+    for fr, rows in by.items():
+        rows.sort(reverse=True)
+        for i, (_, pid) in enumerate(rows[:40]):
+            FRANCHISE_RANK[(pid, fr)] = i + 1
+
+
+def legend_bonus(pid, fr):
+    """Franchise games leaders are top of mind for that team's fans."""
+    r = FRANCHISE_RANK.get((pid, fr))
+    return 1.0 if r is None else 1.4 if r <= 5 else 1.25 if r <= 15 else 1.1
+
+
 def assoc_team(p, fr):
-    share = p["fr_G"][fr] / max(p["G"], 1)
-    return 0.35 + 0.65 * math.sqrt(min(1.0, share))
+    return assoc_share(p["fr_G"][fr] / max(p["G"], 1)) * legend_bonus(p["id"], fr)
 
 
 def season_bonus(n):
@@ -644,7 +759,8 @@ def era(c):
     return 9 * c["ER"] / ip if ip else 99
 
 
-def build_prompts(P, sched):
+def build_prompts(P):
+    rank_franchise_legends(P)
     bank = Bank(P)
     players = list(P.values())
     FR = list(FRANCHISES)
@@ -668,13 +784,13 @@ def build_prompts(P, sched):
         for p in by_fr[a]:
             if p["fr_G"][b] > 0:
                 share = (p["fr_G"][a] + p["fr_G"][b]) / max(p["G"], 1)
-                ans[p["id"]] = 0.35 + 0.65 * math.sqrt(min(1, share))
+                ans[p["id"]] = assoc_share(share) * max(legend_bonus(p["id"], a), legend_bonus(p["id"], b))
         subs = "; ".join(s for s in (tsub[a], tsub[b]) if s) or "Any games for both franchises"
         bank.add(f"pair-{a}-{b}", f"Played for the {tn[a]} and the {tn[b]}", subs, "pair", ans, team=[a, b])
 
     # ---- 3. Historical identities + decades + current season ---------------
     for label, fr, y0, y1, sub in ERAS:
-        ans = {p["id"]: 0.35 + 0.65 * math.sqrt(min(1, p["era_G"][label] / max(p["G"], 1)))
+        ans = {p["id"]: assoc_share(p["era_G"][label] / max(p["G"], 1))
                for p in players if p["era_G"][label] > 0}
         bank.add("era-" + re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-"),
                  f"Played for the {label}", sub, "era", ans, team=[fr])
@@ -688,7 +804,7 @@ def build_prompts(P, sched):
             for p in by_fr[fr]:
                 g = p["fr_dec_G"][(fr, d)]
                 if g > 0:
-                    ans[p["id"]] = 0.35 + 0.65 * math.sqrt(min(1, g / max(p["G"], 1)))
+                    ans[p["id"]] = assoc_share(g / max(p["G"], 1)) * legend_bonus(p["id"], fr)
             bank.add(f"dec-{fr}-{d}", f"Played for the {tn[fr]} in the {d}s",
                      f"Any game from {d} to {d + 9}" + (f" · {tsub[fr]}" if tsub[fr] else ""),
                      "decade", ans, team=[fr])
@@ -728,15 +844,15 @@ def build_prompts(P, sched):
         for key, phrase, kind, pred in TEAM_SEASON:
             ans = {}
             for p in by_fr[fr]:
-                ys = [y for y, c in fr_seasons(p, fr, kind) if pred(c, sched.get(y, 154))]
+                ys = [y for y, c in fr_seasons(p, fr, kind) if pred(c, p["qg_fr"][(y, fr)] or 154)]
                 if ys:
                     ans[p["id"]] = assoc_team(p, fr) * season_bonus(len(ys)) * recent_bonus(ys)
             bank.add(f"ts-{key}-{fr}", phrase.format(t=tn[fr]), SUBS.get(key, "Single season, with this franchise"),
                      "team-stat", ans, team=[fr])
 
     TEAM_AWARD = [
-        ("mvp", "Most Valuable Player", "Won MVP as a member of the {t}", 5),
-        ("cy", "Cy Young Award", "Won the Cy Young as a member of the {t}", 4),
+        ("mvp", "Most Valuable Player", "Won an MVP with the {t}", 5),
+        ("cy", "Cy Young Award", "Won a Cy Young with the {t}", 4),
         ("roy", "Rookie of the Year", "Won Rookie of the Year with the {t}", 4),
         ("gg", "Gold Glove", "Won a Gold Glove with the {t}", 8),
         ("ss", "Silver Slugger", "Won a Silver Slugger with the {t}", 8),
@@ -749,7 +865,7 @@ def build_prompts(P, sched):
                 if n:
                     ans[p["id"]] = assoc_team(p, fr) * season_bonus(n)
             bank.add(f"ta-{key}-{fr}", phrase.format(t=tn[fr]),
-                     "Award counted for the team he played most for that season", "team-award", ans,
+                     "Counted for the team he played most for that season", "team-award", ans,
                      team=[fr], min_n=mn)
         # All-Star
         ans = {}
@@ -757,7 +873,7 @@ def build_prompts(P, sched):
             n = len({y for y, f in p["allstar"] if f == fr})
             if n:
                 ans[p["id"]] = assoc_team(p, fr) * season_bonus(n)
-        bank.add(f"ta-as-{fr}", f"Made an All-Star team as a member of the {tn[fr]}",
+        bank.add(f"ta-as-{fr}", f"Made an All-Star team with the {tn[fr]}",
                  "Selected to the All-Star Game while on this franchise", "team-award", ans, team=[fr])
         # World Series
         ans = {}
@@ -797,13 +913,16 @@ def build_prompts(P, sched):
                      "team-birth", ans, team=[fr], min_n=25)
         # Positions
         for col, phrase in POS_PROMPT:
-            ans = {}
+            ans, cameo = {}, set()
             for p in by_fr[fr]:
                 g = p["fr_pos"][fr][col]
                 if g > 0:
-                    ans[p["id"]] = assoc_team(p, fr) * (0.6 + 0.4 * min(1, g / max(1, p["fr_G"][fr])))
+                    pos_share = min(1, g / max(1, p["fr_G"][fr]))
+                    ans[p["id"]] = assoc_team(p, fr) * (0.25 + 0.75 * math.sqrt(pos_share))
+                    if pos_share < 0.05:
+                        cameo.add(p["id"])
             bank.add(f"tp-{col[2:]}-{fr}", f"{phrase} for the {tn[fr]}", "At least one game at the position",
-                     "team-pos", ans, team=[fr])
+                     "team-pos", ans, team=[fr], cameo=cameo)
         ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if p["fr_pos"][fr]["G_p"] > 0 and p["throws"] == "L"}
         bank.add(f"tp-lhp-{fr}", f"Left-handed pitcher for the {tn[fr]}", "Threw left, pitched at least one game",
                  "team-pos", ans, team=[fr])
@@ -884,9 +1003,16 @@ def build_prompts(P, sched):
         ("lifer15", "Spent 15+ seasons with one franchise and never played elsewhere",
          lambda p: p["seasons"] >= 15 and len([f for f in p["fr_G"] if p["fr_G"][f]]) == 1),
     ]
+    CAREER_SUB = {
+        "pg800": "Regular season, all teams combined", "g2500": "Regular season, all teams combined",
+        "seasons20": "Any season with at least one game", "decades4": "e.g. 1979 through 2001",
+        "fr8": "Each franchise counts once, whatever it was called", "fr10": "Each franchise counts once, whatever it was called",
+        "hrp": "Primarily a pitcher; career home runs as a hitter", "all9": "At least one game at each of the nine spots",
+        "onegame": None, "lifer15": "One franchise, start to finish",
+    }
     for key, text, pred in CAREER:
         ans = {p["id"]: 1.0 for p in players if pred(p)}
-        bank.add(f"c-{key}", text, "Regular season, all teams combined", "career", ans,
+        bank.add(f"c-{key}", text, CAREER_SUB.get(key, "Regular season, all teams combined"), "career", ans,
                  min_n=8 if key not in ("hr500", "w300", "h3000") else 6)
 
     # ---- 6. Single-season feats -------------------------------------------
@@ -937,9 +1063,9 @@ def build_prompts(P, sched):
         for p in players:
             src = p["bat_season"] if kind == "bat" else p["pit_season"]
             if key == "era2live":
-                ys = [y for y, c in src.items() if y >= 1920 and qualifies_pit(c, sched.get(y, 154)) and era(c) < 2.0]
+                ys = [y for y, c in src.items() if y >= 1920 and qualifies_pit(c, p["qg"][y] or 154) and era(c) < 2.0]
             else:
-                ys = [y for y, c in src.items() if pred(c, sched.get(y, 154))]
+                ys = [y for y, c in src.items() if pred(c, p["qg"][y] or 154)]
             if ys:
                 ans[p["id"]] = season_bonus(len(ys)) * recent_bonus(ys)
         sub = "Regular season, all teams that year combined"
@@ -1028,7 +1154,9 @@ def build_prompts(P, sched):
              {p["id"]: 1 for p in hofers if p["pos"]["G_p"] >= 0.5 * p["G"]})
     for col, nm in (("G_c", "catcher"), ("G_ss", "shortstop"), ("G_2b", "second baseman"),
                     ("G_3b", "third baseman"), ("G_1b", "first baseman"), ("G_of", "outfielder")):
-        bank.add(f"h-{col[2:]}", f"Hall of Fame {nm}", f"Played most of his games at {nm.replace('man', '')}".replace(" baseman", " base"),
+        where = {"catcher": "at catcher", "shortstop": "at shortstop", "outfielder": "in the outfield"}.get(
+            nm, "at " + nm.replace("baseman", "base"))
+        bank.add(f"h-{col[2:]}", f"Hall of Fame {nm}", f"Played most of his games {where}",
                  "hof", {p["id"]: 1 for p in hofers if p["pos"][col] >= 0.5 * p["G"]}, min_n=6)
     bank.add("h-fb", "First-ballot Hall of Famer", "Elected by the BBWAA in his first year on the ballot", "hof",
              {p["id"]: 1 for p in hofers if p.get("first_ballot")})
@@ -1071,12 +1199,20 @@ def build_prompts(P, sched):
     for st, name in STATES.items():
         bank.add(f"b-st-{st.lower()}", f"Born in {name}", "U.S. birth state", "birth",
                  {p["id"]: 1 for p in players if p["state"] == st}, min_n=10)
+    NYC = {"New York", "Brooklyn", "Bronx", "The Bronx", "Queens", "Staten Island", "Manhattan", "Flushing",
+           "Jamaica", "Astoria", "Long Island City", "Richmond Hill", "Far Rockaway", "Ridgewood", "Bayside"}
+    bank.add("b-city-nyc", "Born in New York City", "Any of the five boroughs, Brooklyn included", "birth",
+             {p["id"]: 1 for p in players if p["state"] == "NY" and p["city"] in NYC})
     cities = Counter((p["city"], p["state"] or p["country"]) for p in players if p["city"])
     for (city, region), n in cities.most_common():
         if n < 40:
             break
+        if region == "NY" and city in NYC and city != "Brooklyn":
+            continue  # covered by the New York City prompt
+        if region == "DC":
+            continue  # same as the Washington, D.C. birth-state prompt
         label = city
-        if region in STATES and city not in ("New York", "Chicago", "Philadelphia", "Los Angeles", "Boston"):
+        if region in STATES and city not in ("Chicago", "Philadelphia", "Los Angeles", "Boston"):
             label = f"{city}, {STATES[region].replace(' State', '')}"
         elif region in COUNTRIES:
             label = f"{city}, {COUNTRIES[region].replace('the ', '')}"
@@ -1168,6 +1304,212 @@ def build_prompts(P, sched):
     bank.add("n-hoflast", "Shares a last name with a Hall of Famer (but isn't one)",
              "e.g. any non-Hall of Fame Ruth, Mays or Aaron", "names",
              {p["id"]: 1 for p in players if p["last"] in hof_last and not p.get("hof")})
+
+    # ---- 11. Teammates of icons ------------------------------------------------------
+    for name, yr in TEAMMATE_OF:
+        found = match_icon(P, name, yr)
+        if not found:
+            continue
+        star = found[0]
+        ans = {}
+        for p in players:
+            if p is star:
+                continue
+            shared = p["teams"] & star["teams"]
+            if shared:
+                ans[p["id"]] = assoc_share(len({y for y, _ in shared}) / max(p["seasons"], 1))
+        slug = re.sub(r"[^a-z]+", "-", ascii_fold(name).lower()).strip("-")
+        bank.add(f"mate-{slug}", f"Was a teammate of {star['name']}",
+                 f"Same team, same season. {star['name']} played {star['y0']}–{star['y1']}", "teammate", ans)
+
+    # ---- 12. Franchise × an honor won with any team (Immaculate Grid style) -----------
+    EVER = [
+        ("mvp", "won an MVP", lambda p: p["aw"]["Most Valuable Player"] > 0, 5),
+        ("cy", "won a Cy Young", lambda p: p["aw"]["Cy Young Award"] > 0, 5),
+        ("roy", "won Rookie of the Year", lambda p: p["aw"]["Rookie of the Year"] > 0, 6),
+        ("gg", "won a Gold Glove", lambda p: p["aw"]["Gold Glove"] > 0, 8),
+        ("ss", "won a Silver Slugger", lambda p: p["aw"]["Silver Slugger"] > 0, 8),
+        ("as", "made an All-Star team", lambda p: p["n_allstar"] > 0, 8),
+        ("ws", "won a World Series", lambda p: p["n_ws"] > 0, 8),
+    ]
+    for fr in FR:
+        for key, phrase, pred, mn in EVER:
+            ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if pred(p)}
+            bank.add(f"te-{key}-{fr}", f"Played for the {tn[fr]} and {phrase}",
+                     "The honor can come with any team", "team-ever", ans, team=[fr], min_n=mn)
+
+    # ---- 13. Pennants ---------------------------------------------------------------------
+    for fr in FR:
+        ans = {}
+        for p in by_fr[fr]:
+            n = sum(1 for k in p["teams"] if TEAMINFO.get(k, {}).get("pennant") and TEAMINFO[k]["fr"] == fr)
+            if n:
+                ans[p["id"]] = assoc_team(p, fr) * season_bonus(n)
+        bank.add(f"ta-pen-{fr}", f"Played for a pennant-winning {tn[fr]} team",
+                 "Appeared for the franchise in a season it won the AL or NL pennant", "team-award", ans,
+                 team=[fr], min_n=10)
+
+    # ---- 14. Managers who also played ---------------------------------------------------
+    mgrs = [p for p in players if p["managed"]]
+    bank.add("m-any", "Played in the majors and later managed", "Any MLB managing job", "manager",
+             {p["id"]: 0.5 + 0.5 * min(1, len({y for y, *_ in p["managed"]}) / 10) for p in mgrs})
+    bank.add("m-pm", "Was a player-manager", "Managed a team while still playing for it", "manager",
+             {p["id"]: 1 for p in mgrs if any(pm for _, _, pm, _ in p["managed"])})
+    bank.add("m-ws", "Played in the majors and managed a World Series champion", None, "manager",
+             {p["id"]: 1 for p in mgrs if any(TEAMINFO.get((y, t), {}).get("ws") for y, _, _, t in p["managed"])},
+             min_n=6)
+    for fr in FR:
+        ans = {}
+        for p in mgrs:
+            yrs = {y for y, f, _, _ in p["managed"] if f == fr}
+            if yrs:
+                ans[p["id"]] = 0.3 + 0.7 * min(1, len(yrs) / 8)
+        bank.add(f"m-{fr}", f"Managed the {tn[fr]} and played in the majors",
+                 "Any stint as the franchise's manager", "manager", ans, team=[fr], min_n=6)
+
+    # ---- 15. League leaders ---------------------------------------------------------------
+    LEAD = [
+        ("hr", "Led his league in home runs", "bat", "HR", 1),
+        ("rbi", "Led his league in RBI", "bat", "RBI", 1),
+        ("sb", "Led his league in stolen bases", "bat", "SB", 1),
+        ("h", "Led his league in hits", "bat", "H", 1),
+        ("avg", "Won a batting title", "bat", "AVG", 1),
+        ("w", "Led his league in wins", "pit", "W", 1),
+        ("so", "Led his league in strikeouts (pitching)", "pit", "SO", 1),
+        ("sv", "Led his league in saves (since 1969)", "pit", "SV", 1),
+        ("era", "Won an ERA title", "pit", "ERA", -1),
+    ]
+    for key, text, kind, stat, sign in LEAD:
+        best = {}
+        cand = defaultdict(list)
+        for p in players:
+            src = p["bat_lg"] if kind == "bat" else p["pit_lg"]
+            for (y, lg), c in src.items():
+                if stat == "SV" and y < 1969:
+                    continue  # saves became an official stat in 1969
+                if stat == "AVG":
+                    if not qualifies_bat(c, p["qg_lg"][(y, lg)] or 154):
+                        continue
+                    v = avg(c)
+                elif stat == "ERA":
+                    if not qualifies_pit(c, p["qg_lg"][(y, lg)] or 154):
+                        continue
+                    v = -era(c)
+                else:
+                    v = c[stat]
+                if v <= 0 and stat != "ERA":
+                    continue
+                cand[(y, lg)].append((v, p["id"]))
+        leads = Counter()
+        for k, rows in cand.items():
+            top = max(v for v, _ in rows)
+            for v, pid in rows:
+                if abs(v - top) < 1e-9:
+                    leads[pid] += 1
+        ans = {pid: season_bonus(n) for pid, n in leads.items()}
+        sub = {"avg": "Highest qualified average in his league", "era": "Lowest qualified ERA in his league",
+               "sv": "Saves became an official stat in 1969"}.get(
+            key, "Led or tied for the lead in the AL, NL or another major league")
+        bank.add(f"lead-{key}", text, sub, "leader", ans)
+
+    # ---- 16. Honors and feats by decade ---------------------------------------------------
+    DEC_AWARDS = [("cy", "Cy Young Award", "Won a Cy Young in the {d}s", 1950),
+                  ("roy", "Rookie of the Year", "Won Rookie of the Year in the {d}s", 1940),
+                  ("gg", "Gold Glove", "Won a Gold Glove in the {d}s", 1950),
+                  ("ss", "Silver Slugger", "Won a Silver Slugger in the {d}s", 1980)]
+    for key, award, phrase, d0 in DEC_AWARDS:
+        for d in range(d0, 2030, 10):
+            ans = {}
+            for p in players:
+                n = sum(1 for a, y, f in p["awards"] if a == award and d <= y <= d + 9)
+                if n:
+                    ans[p["id"]] = season_bonus(n)
+            bank.add(f"ad-{key}-{d}", phrase.format(d=d), None, "award", ans, min_n=6)
+    for d in range(1910, 2030, 10):
+        ans = {}
+        for p in players:
+            n = sum(1 for y, _ in p["ws"] if d <= y <= d + 9)
+            if n:
+                ans[p["id"]] = season_bonus(n)
+        bank.add(f"wsd-{d}", f"Won a World Series in the {d}s", "Played for the champion during its title season",
+                 "postseason", ans)
+    DEC_FEATS = [
+        ("hr40", "Hit 40+ home runs in a season in the {d}s", "bat", lambda c, s: c["HR"] >= 40, 1920),
+        ("hr30", "Hit 30+ home runs in a season in the {d}s", "bat", lambda c, s: c["HR"] >= 30, 1920),
+        ("avg300", "Hit .300+ in a season in the {d}s", "bat", lambda c, s: qualifies_bat(c, s) and avg(c) >= 0.2995, 1920),
+        ("sb40", "Stole 40+ bases in a season in the {d}s", "bat", lambda c, s: c["SB"] >= 40, 1920),
+        ("rbi100", "Drove in 100+ runs in a season in the {d}s", "bat", lambda c, s: c["RBI"] >= 100, 1920),
+        ("w20", "Won 20+ games in a season in the {d}s", "pit", lambda c, s: c["W"] >= 20, 1920),
+        ("so200", "Struck out 200+ batters in a season in the {d}s", "pit", lambda c, s: c["SO"] >= 200, 1950),
+        ("sv35", "Saved 35+ games in a season in the {d}s", "pit", lambda c, s: c["SV"] >= 35, 1980),
+    ]
+    for key, phrase, kind, pred, d0 in DEC_FEATS:
+        for d in range(d0, 2030, 10):
+            ans = {}
+            for p in players:
+                src = p["bat_season"] if kind == "bat" else p["pit_season"]
+                ys = [y for y, c in src.items() if d <= y <= d + 9 and pred(c, p["qg"][y] or 154)]
+                if ys:
+                    ans[p["id"]] = season_bonus(len(ys)) * recent_bonus(ys)
+            sub = "Qualified for the batting title" if key == "avg300" else "Any team, any season in the decade"
+            bank.add(f"df-{key}-{d}", phrase.format(d=d), sub, "decade-feat", ans)
+
+    # ---- 17. Birth country × primary position ----------------------------------------------
+    def primary(p):
+        c = Counter()
+        for col in ("G_p", "G_c", "G_1b", "G_2b", "G_3b", "G_ss", "G_dh"):
+            c[col] = p["pos"][col]
+        c["G_of"] = max(p["pos"]["G_of"], p["pos"]["G_lf"] + p["pos"]["G_cf"] + p["pos"]["G_rf"])
+        top = c.most_common(1)
+        return top[0][0] if top and top[0][1] > 0 else None
+
+    DEMONYM = {"D.R.": "Dominican", "Venezuela": "Venezuelan", "Cuba": "Cuban", "P.R.": "Puerto Rican",
+               "México": "Mexican", "Japan": "Japanese", "CAN": "Canadian", "Panama": "Panamanian",
+               "Curaçao": "Curaçao-born", "South Korea": "South Korean", "Colombia": "Colombian"}
+    POSN = {"G_p": "pitcher", "G_c": "catcher", "G_1b": "first baseman", "G_2b": "second baseman",
+            "G_3b": "third baseman", "G_ss": "shortstop", "G_of": "outfielder"}
+    prim = {p["id"]: primary(p) for p in players}
+    for code, dem in DEMONYM.items():
+        for col, pos in POSN.items():
+            ans = {p["id"]: 1 for p in players if p["country"] == code and prim[p["id"]] == col}
+            label = f"{dem}-born {pos}" if not dem.endswith("-born") else f"{dem} {pos}"
+            slug = re.sub("[^a-z]", "", ascii_fold(code).lower())
+            bank.add(f"bp-{slug}-{col[2:]}", label, "Born there; played most of his games at the position",
+                     "origin-pos", ans, min_n=8)
+
+    # ---- 18. Gold Gloves and Silver Sluggers by position -----------------------------------
+    GGPOS = [("P", {"P"}, "a pitcher"), ("C", {"C"}, "a catcher"), ("1B", {"1B"}, "a first baseman"),
+             ("2B", {"2B"}, "a second baseman"), ("3B", {"3B"}, "a third baseman"), ("SS", {"SS"}, "a shortstop"),
+             ("OF", {"OF", "LF", "CF", "RF"}, "an outfielder")]
+    for award, verb in (("Gold Glove", "Won a Gold Glove as"), ("Silver Slugger", "Won a Silver Slugger as")):
+        poss = GGPOS + ([("DH", {"DH"}, "a DH")] if award == "Silver Slugger" else [])
+        for key, notes, label in poss:
+            ans = {}
+            for p in players:
+                n = sum(1 for a, y, nt in p["award_pos"] if a == award and nt in notes)
+                if n:
+                    ans[p["id"]] = season_bonus(n)
+            text = f"{verb} {label}"
+            bank.add(f"ap-{'gg' if award == 'Gold Glove' else 'ss'}-{key.lower()}", text, None, "award", ans, min_n=6)
+
+    # ---- 19. Extreme teams ------------------------------------------------------------------
+    for key, text, sub, test in (
+            ("w110", "Played for a 110-win team", "Seven teams have won 110 or more", lambda t: t["W"] >= 110),
+            ("w105", "Played for a 105-win team", None, lambda t: t["W"] >= 105),
+            ("l110", "Played for a 110-loss team", "From the 1899 Spiders to the 2024 White Sox", lambda t: t["L"] >= 110),
+            ("l105", "Played for a 105-loss team", None, lambda t: t["L"] >= 105)):
+        ans = {}
+        for p in players:
+            n = sum(1 for k in p["teams"] if k in TEAMINFO and TEAMINFO[k]["lg"] in ("AL", "NL") and test(TEAMINFO[k]))
+            if n:
+                ans[p["id"]] = season_bonus(n)
+        bank.add(f"rec-{key}", text, sub, "record", ans)
+
+    # ---- 20. Debut seasons ---------------------------------------------------------------------
+    for y in range(2015, last_year + 1):
+        ans = {p["id"]: 1 for p in players if p.get("mlb_debut") == y}
+        bank.add(f"deb-{y}", f"Made his MLB debut in {y}", None, "debut", ans)
+
     return bank
 
 
@@ -1207,7 +1549,9 @@ def assign_tiers(bank, P, too_cute_ids):
                 t = max(t, T_TRIPLE)
             elif p["fame_rank"] > 5000:
                 t = max(t, T_DOUBLE)
-            if t >= T_DOUBLE:
+            if pid in pr["cameo"] and p["fame_rank"] <= 400:
+                t = T_CUTE  # a star's brief detour at a position: everyone loves that trivia
+            elif t >= T_DOUBLE:
                 famous_cameo = (pr["team"] and p["fame_rank"] <= 150 and
                                 min(p["fr_G"][f] for f in pr["team"]) < 0.12 * p["G"])
                 if pid in too_cute_ids or famous_cameo:
@@ -1230,6 +1574,23 @@ def difficulty(pr, P):
 
 
 # --------------------------------------------------------------------------
+# Output encoding
+# --------------------------------------------------------------------------
+
+B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+
+
+def encode_answers(values):
+    """Pack answers (playerIndex * 8 + tier) as 3 base64url characters each."""
+    out = []
+    for v in values:
+        if not 0 <= v < 64 ** 3:
+            raise ValueError("answer value out of range: %d" % v)
+        out.append(B64[v >> 12] + B64[(v >> 6) & 63] + B64[v & 63])
+    return "".join(out)
+
+
+# --------------------------------------------------------------------------
 # Main
 # --------------------------------------------------------------------------
 
@@ -1240,15 +1601,11 @@ def main():
     ap.add_argument("--report", action="store_true", help="Print a calibration report")
     args = ap.parse_args()
 
-    P, people, sched = build(find_data_dir(args.data))
+    P, people = build(find_data_dir(args.data))
 
-    too_cute = set()
-    for first, last in TOO_CUTE_NAMES:
-        for p in P.values():
-            if p["first"] == first and p["last"] == last:
-                too_cute.add(p["id"])
+    too_cute = {p["id"] for name, yr in parse_icons(TOO_CUTE_NAMES) for p in match_icon(P, name, yr)}
 
-    bank = build_prompts(P, sched)
+    bank = build_prompts(P)
     prompts = assign_tiers(bank, P, too_cute)
 
     # Drop prompts with no realistic path to an answer: need some recognizable names.
@@ -1274,7 +1631,7 @@ def main():
     for pr in kept:
         a = [idx[pid] * 8 + t for pid, t, _ in pr["ranked"]]
         total_answers += len(a)
-        o = {"id": pr["id"], "t": pr["text"], "c": pr["cat"], "d": pr["diff"], "a": a}
+        o = {"id": pr["id"], "t": pr["text"], "c": pr["cat"], "d": pr["diff"], "a": encode_answers(a)}
         sub = pr["sub"] or ""
         for fr in pr["team"] or []:  # always say which old team names count
             note = FRANCHISES.get(fr, (None, None))[1]
@@ -1293,6 +1650,8 @@ def main():
         "prompts": len(prompts_out),
         "answers": total_answers,
         "source": "Lahman Baseball Database (SABR), CC BY-SA 3.0 — via the pylahman package",
+        "encoding": "Each prompt's `a` is its answers, most to least common, 3 base64url chars apiece: "
+                    "value = playerIndex * 8 + tier",
     }
     payload = {"meta": meta, "tiers": [{"key": k, "label": l, "pts": pts} for k, l, pts in TIERS],
                "players": players_out, "prompts": prompts_out}
