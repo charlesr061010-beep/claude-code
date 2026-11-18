@@ -125,6 +125,9 @@ const ok = (cond, msg) => { if (!cond) fails.push(msg); };
   ok(total === board, 'scoreboard total matches final distance');
   ok((await page.$$('.box-row')).length === 7, 'box score has 7 rows');
   ok(!!(await page.$('svg.park')), 'ballpark chart renders');
+  // Without shared storage (this local copy) the distribution says so instead of inventing data.
+  await page.waitForFunction(() => /aren't available/.test((document.querySelector('#dist-card') || {}).textContent || ''), null, { timeout: 15000 });
+  ok(true, 'distribution explains when shared scores are unavailable');
   const share = await page.textContent('#share-text');
   ok(/Moonshot Daily #\d+ · \d+ ft/.test(share), 'share text headline');
   await page.click('details.all summary');
@@ -308,6 +311,58 @@ const ok = (cond, msg) => { if (!cond) fails.push(msg); };
   await kp.click('#btn-help');
   ok(!!(await kp.$('#dlg-help[open]')), 'with no clock, menus open mid-inning');
   await kc.close();
+
+  // --- everyone's daily distances -----------------------------------------------------
+  // With storage: an in-memory stand-in for claude.ai's db and user capabilities.
+  const sc = await browser.newContext({ viewport: { width: 900, height: 900 } });
+  const sp = await sc.newPage();
+  sp.on('pageerror', (e) => errors.push('scores: ' + e.message));
+  await sp.addInitScript(() => {
+    try { localStorage.setItem('moonshot.seenHelp', 'true'); } catch (e) {}
+    const store = {};
+    for (let i = 0; i < 40; i++) store['scores/u' + i] = { d1: 50 + (i * 15) % 600 };
+    store['scores/junk'] = { d1: 9999 };            // untrusted rows are filtered out
+    const listeners = [];
+    const notify = () => listeners.forEach((f) => f());
+    const db = {
+      doc: (path) => ({
+        get: async () => ({ exists: path in store, data: () => store[path] }),
+        set: async (b) => { store[path] = { ...b }; notify(); },
+        update: async (b) => { store[path] = { ...store[path], ...b }; notify(); },
+      }),
+      collection: (c) => ({
+        where: (f, op, v) => ({
+          onSnapshot: (next) => {
+            const fire = () => next({
+              docs: Object.keys(store).filter((k) => k.startsWith(c + '/') && store[k][f] >= v).map((k) => ({ data: () => store[k] })),
+              metadata: { fromCache: false, hasPendingWrites: false },
+            });
+            listeners.push(fire);
+            setTimeout(fire, 0);
+            return () => {};
+          },
+        }),
+      }),
+    };
+    window.__store = store;
+    window.claude = { use: (name) => Promise.resolve(name === 'db' ? db : name === 'user' ? { id: async () => 'me' } : null) };
+  });
+  await sp.goto(BASE + 'index.html');
+  await sp.waitForSelector('#btn-start');
+  await sp.click('#btn-start');
+  for (let i = 0; i < 7; i++) {
+    await sp.waitForSelector('#btn-skip');
+    await sp.click('#btn-skip');
+    await sp.waitForSelector('#btn-next');
+    await sp.click('#btn-next');
+  }
+  await sp.waitForSelector('.dist .dbar.you');
+  const dist = await sp.evaluate(() => ({ summary: document.querySelector('.dist-summary').textContent, mine: window.__store['scores/me'] }));
+  ok(dist.mine && dist.mine.d1 === 0, 'a finished daily records the player\'s distance once: ' + JSON.stringify(dist.mine));
+  ok(dist.summary.startsWith('41 players'), 'distribution counts everyone, skipping bad rows: ' + dist.summary);
+  ok((await sp.textContent('.dist .dyou')) === 'You', 'your bar is labeled');
+  if (SHOTS) await sp.screenshot({ path: `${SHOTS}/e2e-distribution.png`, fullPage: true });
+  await sc.close();
 
   // --- phone, dark -------------------------------------------------------------
   const m = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });

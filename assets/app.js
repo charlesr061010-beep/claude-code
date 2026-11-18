@@ -555,6 +555,7 @@
   // ------------------------------------------------------------------
   function render() {
     stopClock();
+    if (stopDistribution) { stopDistribution(); stopDistribution = null; }
     renderBoard();
     $('#mode-daily').setAttribute('aria-pressed', String(G.mode !== 'unlimited'));
     $('#mode-unlimited').setAttribute('aria-pressed', String(G.mode === 'unlimited'));
@@ -870,27 +871,25 @@
 
   function nameChips(list) {
     return '<ul class="names">' + list.map(function (x) {
-      return '<li title="' + esc(playerMeta(x.p)) + '"><span class="dot tier-' + TIERS[x.t].key + '"></span>' + esc(playerName(x.p)) + '</li>';
+      return '<li title="' + esc(TIERS[x.t].label + ' · ' + playerMeta(x.p)) + '"><span class="dot tier-' + TIERS[x.t].key + '"></span>' +
+        esc(playerName(x.p)) + '<span class="sr-only"> (' + TIERS[x.t].label + ')</span></li>';
     }).join('') + '</ul>';
   }
 
-  // Popular answers + the best-known answers from the rarest tier present.
+  // Popular answers, plus the best-known deep cuts: Home Runs first (at most
+  // 1% of any prompt), then Triples to fill the list.
   function highlights(pi) {
     var a = ans(pi);
     var common = [], deep = [];
     for (var i = 0; i < a.length && common.length < 5; i++) {
       if ((a[i] & 7) !== 1) common.push({ p: a[i] >> 3, t: a[i] & 7 });
     }
-    var best = 3;
-    for (var tt = 5; tt >= 3; tt--) {
-      var any = false;
-      for (var q = 0; q < a.length; q++) if ((a[q] & 7) === tt) { any = true; break; }
-      if (any) { best = tt; break; }
-    }
-    for (var j = 0; j < a.length && deep.length < 5; j++) {
-      if ((a[j] & 7) === best) deep.push({ p: a[j] >> 3, t: best });
-    }
-    return { common: common, deep: deep, deepTier: best };
+    [5, 4, 3].forEach(function (tt) {
+      for (var j = 0; j < a.length && deep.length < 5; j++) {
+        if ((a[j] & 7) === tt) deep.push({ p: a[j] >> 3, t: tt });
+      }
+    });
+    return { common: common, deep: deep };
   }
 
   function wrongHint(pid, pi) {
@@ -937,7 +936,7 @@
           '</div>' +
         '</div>' +
         '<div class="answers"><h3>Most common answers</h3>' + nameChips(h.common) + '</div>' +
-        '<div class="answers"><h3>' + (h.deepTier === 5 ? 'Home runs you could have hit' : TIERS[h.deepTier].label + 's you could have hit') + '</h3>' + nameChips(h.deep) + '</div>' +
+        '<div class="answers"><h3>Deep cuts you could have hit</h3>' + nameChips(h.deep) + '</div>' +
         '<div class="row"><button class="btn primary" id="btn-next" type="button">' + (last ? 'See the box score' : 'Next inning') + '</button></div>' +
       '</article>';
     $('#btn-next').addEventListener('click', nextInning);
@@ -1065,6 +1064,7 @@
         (G.mode === 'unlimited' ? '<div class="row">' + teamSelect('team-next', G.team || '') + catSelect('cat-next', G.cat || '') + '</div>' : '') +
         (G.mode === 'daily' ? '<p class="next-daily" id="next-daily"></p>' : '') +
       '</article>' +
+      (G.mode !== 'unlimited' ? distributionCard() : '') +
       '<article class="card"><div class="eyebrow"><span class="inn">Box score</span></div><div class="box">' + rows + '</div></article>';
     $('#btn-share').addEventListener('click', copyShare);
     $('#btn-again').addEventListener('click', function () {
@@ -1088,6 +1088,7 @@
       d.addEventListener('toggle', function () { if (d.open && !d.dataset.filled) fillAll(d); });
     });
     if (G.mode === 'daily') tickNextDaily();
+    if (G.mode !== 'unlimited') startDistribution(G.num, G.mode === 'daily' ? ft : null);
   }
 
   function fillAll(d) {
@@ -1161,6 +1162,222 @@
     } catch (e) { fallback(); }
   }
 
+
+  // ------------------------------------------------------------------
+  // Everyone's daily scores
+  // ------------------------------------------------------------------
+  // Where shared scores live. On claude.ai the page's own database holds
+  // one record per player ("scores/<player>", a field per daily such as
+  // d12: 485), readable by everyone, written only by its player. Anywhere
+  // else, set SCORES_ENDPOINT to a service that accepts
+  //   POST {game, ft, player}   and answers   GET ?game=N -> {"scores": [ft, ...]}
+  // With neither, the chart explains that shared scores aren't available.
+  var SCORES_ENDPOINT = '';
+  var Scores = (function () {
+    var capsP = null;
+    function caps() {
+      if (capsP) return capsP;
+      var c = window.claude;
+      if (!c || typeof c.use !== 'function') return (capsP = Promise.resolve(null));
+      capsP = Promise.all([c.use('db'), c.use('user')])
+        .then(function (r) { return r[0] && r[1] ? { db: r[0], user: r[1] } : null; })
+        .catch(function () { return null; });
+      return capsP;
+    }
+    function field(num) { return 'd' + num; }
+    function clean(v) { return typeof v === 'number' && v >= 0 && v <= 700 && v % 5 === 0 ? v : null; }
+    function playerKey() {
+      var k = load('player', '');
+      if (!k) { k = 'p' + Math.random().toString(36).slice(2, 12); save('player', k); }
+      return k;
+    }
+    return {
+      // Record a player's first finish of a daily. Resolves true when stored.
+      submit: function (num, ft) {
+        if (SCORES_ENDPOINT) {
+          return fetch(SCORES_ENDPOINT, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ game: num, ft: ft, player: playerKey() })
+          }).then(function (r) { return r.ok; }).catch(function () { return false; });
+        }
+        return caps().then(function (c) {
+          if (!c) return false;
+          return c.user.id().then(function (id) {
+            if (!id) return false;
+            var ref = c.db.doc('scores/' + id);
+            return ref.get().then(function (snap) {
+              var body = {};
+              body[field(num)] = ft;
+              if (!snap.exists) return ref.set(body).then(function () { return true; });
+              var cur = snap.data() || {};
+              if (cur[field(num)] != null) return true; // first finish already counted
+              return ref.update(body).then(function () { return true; });
+            });
+          });
+        }).catch(function () { return false; });
+      },
+      // Live list of everyone's distance for one daily. Returns a stop function.
+      // state: 'live' | 'slow' | 'absent' | 'error'
+      watch: function (num, onScores, onState) {
+        var stopped = false, unsub = null, poll = null;
+        var timer = setTimeout(function () { if (!stopped) onState('slow'); }, 10000);
+        var done = function () { clearTimeout(timer); };
+        if (SCORES_ENDPOINT) {
+          var pull = function () {
+            fetch(SCORES_ENDPOINT + (SCORES_ENDPOINT.indexOf('?') < 0 ? '?' : '&') + 'game=' + num)
+              .then(function (r) { return r.json(); })
+              .then(function (j) {
+                if (stopped) return;
+                done();
+                onScores((j.scores || []).map(clean).filter(function (v) { return v !== null; }));
+                onState('live');
+              })
+              .catch(function () { if (!stopped) { done(); onState('error'); } });
+          };
+          pull();
+          poll = setInterval(pull, 30000);
+        } else {
+          caps().then(function (c) {
+            if (stopped) return;
+            if (!c) { done(); onState('absent'); return; }
+            try {
+              unsub = c.db.collection('scores').where(field(num), '>=', 0).onSnapshot(function (snap) {
+                if (stopped) return;
+                if (!snap.metadata.fromCache) { done(); onState('live'); }
+                onScores(snap.docs.map(function (d) { return clean((d.data() || {})[field(num)]); })
+                  .filter(function (v) { return v !== null; }));
+              }, function () { if (!stopped) { done(); onState('error'); } });
+            } catch (e) { done(); onState('error'); }
+          });
+        }
+        return function () { stopped = true; done(); if (unsub) unsub(); if (poll) clearInterval(poll); };
+      }
+    };
+  })();
+
+  var stopDistribution = null;
+  var DIST_BIN = 50; // feet per bar: 0-49, 50-99, ... 650-700
+
+  function distributionCard() {
+    return '<article class="card" id="dist-card" aria-labelledby="dist-title">' +
+      '<div class="eyebrow"><span class="inn" id="dist-title">Everyone\'s distance · Daily #' + G.num + '</span>' +
+      '<span id="dist-state">Loading…</span></div>' +
+      '<div id="dist-body"><p class="fine">Loading everyone\'s scores…</p></div>' +
+    '</article>';
+  }
+
+  function startDistribution(num, mine) {
+    if (stopDistribution) stopDistribution();
+    var latest = [];
+    var paint = function () {
+      var body = $('#dist-body');
+      if (body) { body.innerHTML = distributionChart(latest, mine); wireDistribution(latest, mine); }
+    };
+    stopDistribution = Scores.watch(num, function (scores) {
+      latest = scores;
+      paint();
+    }, function (state) {
+      var el = $('#dist-state');
+      if (!el) return;
+      if (state === 'live') el.textContent = 'Live';
+      else if (state === 'slow') el.textContent = 'Still loading. Scores may be out of date';
+      else if (state === 'error') el.textContent = 'Couldn\'t load scores';
+      if (state === 'absent' || state === 'error') {
+        var b = $('#dist-body');
+        if (b && !latest.length) {
+          b.innerHTML = '<p class="fine">' + (state === 'absent'
+            ? 'Shared scores aren\'t available on this copy of Moonshot. Play on the Moonshot page at claude.ai to see where everyone landed, or set <code>SCORES_ENDPOINT</code> in <code>assets/app.js</code> for your own host.'
+            : 'Everyone\'s scores couldn\'t be loaded right now. Your own result is saved.') + '</p>';
+        }
+      }
+    });
+  }
+
+  // Histogram of everyone's distance for one daily, with the viewer's bin
+  // marked. One series: no legend; the heading names it and "You" labels
+  // the highlighted bar, so the highlight never relies on color alone.
+  function distributionChart(scores, mine) {
+    if (!scores.length) return '<p class="fine">Nobody has a recorded score for this game yet. Finish it and yours will be the first.</p>';
+    var bins = [];
+    for (var b = 0; b < 700 / DIST_BIN; b++) bins.push(0);
+    var binOf = function (ft) { return Math.min(bins.length - 1, Math.floor(ft / DIST_BIN)); };
+    scores.forEach(function (ft) { bins[binOf(ft)]++; });
+    var n = scores.length;
+    var sorted = scores.slice().sort(function (a, b2) { return a - b2; });
+    var median = sorted[Math.floor((n - 1) / 2)];
+    var mineBin = mine == null ? -1 : binOf(mine);
+    var shorter = mine == null ? 0 : scores.filter(function (v) { return v < mine; }).length;
+    var W = 560, H = 190, L = 30, R = 8, T = 22, B = 24;
+    var iw = W - L - R, ih = H - T - B, slot = iw / bins.length, bw = slot - 2;
+    var max = Math.max.apply(null, bins);
+    var y = function (v) { return T + ih - (v / max) * ih; };
+    var marks = '', hits = '', ticks = '', table = '';
+    bins.forEach(function (count, i) {
+      var x = L + i * slot + 1, top = y(count), h = T + ih - top;
+      var cls = 'dbar' + (i === mineBin ? ' you' : '');
+      if (h > 0) {
+        var r = Math.min(4, bw / 2, h);
+        marks += '<path class="' + cls + '" d="M' + x + ',' + (T + ih) + 'V' + (top + r) + 'Q' + x + ',' + top + ' ' + (x + r) + ',' + top +
+          'H' + (x + bw - r) + 'Q' + (x + bw) + ',' + top + ' ' + (x + bw) + ',' + (top + r) + 'V' + (T + ih) + 'Z"/>';
+      } else {
+        marks += '<path class="' + cls + '"/>';
+      }
+      var lo = i * DIST_BIN, hi = i === bins.length - 1 ? 700 : lo + DIST_BIN - 1;
+      hits += '<rect class="hit" role="img" tabindex="0" data-i="' + i + '" x="' + (L + i * slot) + '" y="' + T + '" width="' + slot +
+        '" height="' + ih + '" aria-label="' + lo + ' to ' + hi + ' feet: ' + plural(count, 'player') + (i === mineBin ? ', including you' : '') + '"/>';
+      table += '<tr><td>' + lo + '–' + hi + ' ft</td><td>' + count + '</td></tr>';
+      if (i % 2 === 0) ticks += '<text class="htick" x="' + (L + i * slot) + '" y="' + (H - 6) + '" text-anchor="middle">' + lo + '</text>';
+    });
+    ticks += '<text class="htick" x="' + (L + iw) + '" y="' + (H - 6) + '" text-anchor="end">700</text>';
+    var youLabel = '';
+    if (mineBin >= 0) {
+      var cx = L + mineBin * slot + 1 + bw / 2;
+      youLabel = '<text class="dyou" x="' + cx + '" y="' + (y(bins[mineBin]) - 7) + '" text-anchor="middle">You</text>';
+    }
+    var summary = mine == null
+      ? plural(n, 'player') + ' finished this daily. Median distance: ' + median + ' ft.'
+      : plural(n, 'player') + ' finished this daily. You went farther than ' +
+        (n > 1 ? Math.round(100 * shorter / n) + '% of them' : 'nobody yet: you\'re the first') +
+        '. Median: ' + median + ' ft.';
+    return '<p class="dist-summary">' + esc(summary) + '</p>' +
+      '<div class="hist-plot dist-plot"><svg class="hist dist" viewBox="0 0 ' + W + ' ' + H + '" role="group" aria-label="How far everyone went in this daily">' +
+        '<text class="htick" x="' + (L - 6) + '" y="' + (T + 4) + '" text-anchor="end">' + max + '</text>' +
+        '<text class="htick" x="' + (L - 6) + '" y="' + (T + ih + 4) + '" text-anchor="end">0</text>' +
+        marks + youLabel +
+        '<line class="hbase" x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '"/>' +
+        ticks + hits +
+      '</svg><div class="chart-tip" id="dist-tip" hidden></div></div>' +
+      '<p class="fine">Players per 50 ft of distance. Only each player\'s first finish counts; archive replays don\'t.</p>' +
+      '<table class="sr-only"><caption>Players by distance</caption><thead><tr><th>Distance</th><th>Players</th></tr></thead><tbody>' +
+      table + '</tbody></table>';
+  }
+
+  function wireDistribution(scores, mine) {
+    var tip = $('#dist-tip'), plot = $('.dist-plot');
+    if (!tip || !plot) return;
+    var bars = $$('.dist .dbar');
+    var mineBin = mine == null ? -1 : Math.min(700 / DIST_BIN - 1, Math.floor(mine / DIST_BIN));
+    var show = function (el) {
+      var i = Number(el.getAttribute('data-i'));
+      var lo = i * DIST_BIN, hi = i === 700 / DIST_BIN - 1 ? 700 : lo + DIST_BIN - 1;
+      var count = scores.filter(function (v) { return Math.min(700 / DIST_BIN - 1, Math.floor(v / DIST_BIN)) === i; }).length;
+      tip.innerHTML = '<b>' + lo + '–' + hi + ' ft</b><br><span>' + plural(count, 'player') + (i === mineBin ? ', including you' : '') + '</span>';
+      tip.hidden = false;
+      var pr = plot.getBoundingClientRect(), br = el.getBoundingClientRect();
+      var bar = bars[i] && bars[i].getBoundingClientRect();
+      tip.style.left = Math.max(60, Math.min(pr.width - 60, br.left - pr.left + br.width / 2)) + 'px';
+      tip.style.top = ((bar && bar.height ? bar.top : br.bottom) - pr.top - 8) + 'px';
+      bars.forEach(function (b, k) { b.classList.toggle('dim', k !== i); });
+    };
+    var hide = function () { tip.hidden = true; bars.forEach(function (b) { b.classList.toggle('dim', false); }); };
+    $$('.dist .hit').forEach(function (el) {
+      el.addEventListener('mouseenter', function () { show(el); });
+      el.addEventListener('focus', function () { show(el); });
+      el.addEventListener('mouseleave', hide);
+      el.addEventListener('blur', hide);
+    });
+  }
+
   // ------------------------------------------------------------------
   // Stats + history
   // ------------------------------------------------------------------
@@ -1186,6 +1403,7 @@
       s.last = G.num;
       G.inn.forEach(function (x) { s.tiers[x.t < 0 ? 6 : x.t]++; });
       save('stats', s);
+      Scores.submit(G.num, ft); // shared distribution: first finish only, fire and forget
     } else if (G.mode === 'unlimited') {
       var u = load('ustats', { played: 0, best: 0, total: 0 });
       u.played++;
@@ -1393,6 +1611,7 @@
     indexData();
     window.MoonshotDebug = {
       dailyIds: dailyIds, randomIds: randomIds, search: search, todayNum: todayNum, resolveName: resolveName,
+      distributionChart: distributionChart,
       challengeLink: function () { return challengeLink(G) || challengeHash(G); },
       answers: function (id) { return Array.prototype.slice.call(ans(PROMPT_INDEX[id])); }
     };

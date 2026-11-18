@@ -31,6 +31,7 @@ Upper deck
 - **Autocomplete** covers all 23,000+ players. It shows position and years, Jr./Sr. are spelled out (Ken Griffey Jr. vs. Sr.), and it knows about 70 nicknames ("Big Papi", "Pudge", "Goose Gossage", "El Duque"), in typed answers too.
 - **After each inning** you see your answer's rank, every franchise the player suited up for (the prompt's teams in bold), the most common answers, and the deep cuts you could have used.
 - **Box score:** every valid answer for every prompt, filterable, plus a ballpark chart of your total distance and a shareable result.
+- **Everyone's distance:** after a daily, a Krillion-style chart shows how far every player went (50-ft bins), with your bar marked "You", the share of players you out-hit, and the median. It updates live as people finish. Only each player's first finish counts; archive replays don't.
 - **Past dailies** can be replayed from the archive, and a daily left unfinished at midnight waits there. Stats (streak, average, best, a chart of recent distances, results by tier) stay in your browser.
 
 ![The final screen with the ballpark flight chart](docs/final.png)
@@ -79,6 +80,14 @@ It's a static site, so open `index.html` or serve the folder:
 python3 -m http.server 8765    # then visit http://localhost:8765
 ```
 
+### Shared daily scores
+
+The score distribution needs somewhere to keep everyone's results:
+
+- **On claude.ai** (the published Moonshot page) it uses the page's built-in database. Each signed-in player has one record, `scores/<player>`, with a field per daily (`d12: 485`). Everyone can read the records, each player writes only their own, and the owner can tidy up. Players need Contributor access or above to add their score; anyone who can open the page sees the chart.
+- **Anywhere else**, set `SCORES_ENDPOINT` near the top of the score section of `assets/app.js` to a service of your own that accepts `POST {"game": 12, "ft": 485, "player": "<random id>"}` and answers `GET <endpoint>?game=12` with `{"scores": [485, 330, ...]}`. Values outside 0–700 (or not multiples of 5) are ignored.
+- **With neither**, the chart says shared scores aren't available. It never shows invented data.
+
 ### Publishing on GitHub Pages
 
 `.github/workflows/pages.yml` deploys the site on every push to `main`. One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**. Shared results and challenge links use the Pages URL automatically. To use a different host, set `SHARE_URL` at the top of `assets/app.js`.
@@ -95,7 +104,7 @@ python3 -m http.server 8765 &
 node tests/e2e.js http://localhost:8765/    # plays a full game in Chromium
 ```
 
-The e2e test plays a daily game: right answers, a wrong one, and a timeout that survives a reload. It also checks that 120 dailies never repeat a prompt and that difficulty stays balanced, and it exercises search ranking, team and category focus, hard mode, the archive, midnight rollover, the stats chart, typed innings, challenge links, offline play, and a phone-width layout in dark mode. `.github/workflows/ci.yml` runs all three suites on every push.
+The e2e test plays a daily game: right answers, a wrong one, and a timeout that survives a reload. It also checks that 120 dailies never repeat a prompt and that difficulty stays balanced, and it exercises search ranking, team and category focus, hard mode, the archive, midnight rollover, the stats chart, the shared score distribution (against an in-memory stand-in for the claude.ai database), typed innings, challenge links, offline play, and a phone-width layout in dark mode. `.github/workflows/ci.yml` runs all three suites on every push.
 
 ## Rebuilding the data
 
