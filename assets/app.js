@@ -61,6 +61,8 @@
     STL: 'Cardinals', TBD: 'Rays', TEX: 'Rangers', TOR: 'Blue Jays', WSN: 'Nationals'
   };
   var SEEN_MAX = 500; // Unlimited avoids your most recent prompts
+  // Link added to shared results. Set this when hosting somewhere else.
+  var SHARE_URL = /\.github\.io$/.test(location.hostname) ? location.origin + location.pathname : '';
   var FOCUS = [
     ['', 'Any category', null],
     ['teams', 'Franchises', ['team', 'pair', 'teamx']],
@@ -179,7 +181,9 @@
     D.prompts.forEach(function (p, i) { PROMPT_INDEX[p.id] = i; });
     SEARCH = D.players.map(function (p) {
       var n = norm(p[0]);
-      return { n: n, c: n.replace(/ /g, ''), toks: n.split(' ') };
+      var toks = n.split(' ');
+      var core = toks.filter(function (t) { return !/^(jr|sr|ii|iii|iv)$/.test(t); });
+      return { n: n, c: n.replace(/ /g, ''), toks: toks, last: core[core.length - 1] || '' };
     });
   }
 
@@ -202,6 +206,31 @@
   function answerCount(pi) {
     var s = D.prompts[pi].a;
     return typeof s === 'string' ? s.length / 3 : s.length;
+  }
+
+  // A player's stints with today's 30 franchises: 5 chars each (franchise
+  // index, then first and last season as year - 1800 in 2 chars).
+  function playerTeams(pid) {
+    var s = D.spans && D.spans[pid];
+    if (!s) return [];
+    var out = [];
+    var yr = function (i) { return 1800 + ((B64_INDEX[s.charAt(i)] << 6) | B64_INDEX[s.charAt(i + 1)]); };
+    for (var i = 0; i + 4 < s.length; i += 5) {
+      var fr = D.franchises[B64_INDEX[s.charAt(i)]];
+      out.push({ code: fr[0], name: fr[1], y0: yr(i + 1), y1: yr(i + 3) });
+    }
+    return out;
+  }
+  function yearSpan(a, b) {
+    if (a === b) return String(a);
+    var bs = String(b);
+    return a + '–' + (Math.floor(a / 100) === Math.floor(b / 100) ? bs.slice(2) : bs);
+  }
+  function teamLine(pid, highlight) {
+    return playerTeams(pid).map(function (x) {
+      var txt = esc(x.name) + ' ' + yearSpan(x.y0, x.y1);
+      return highlight && highlight.indexOf(x.code) >= 0 ? '<strong>' + txt + '</strong>' : txt;
+    }).join(' · ');
   }
 
   // Map playerIndex -> { t: tier, r: rank } for one prompt.
@@ -233,21 +262,24 @@
     var hits = [];
     for (var i = 0; i < SEARCH.length; i++) {
       var e = SEARCH[i];
-      var score = -1;
-      if (e.n === q) score = 100;
-      else {
-        var all = true;
-        for (var k = 0; k < qt.length && all; k++) {
-          var tok = qt[k], found = false;
-          for (var j = 0; j < e.toks.length; j++) { if (e.toks[j].lastIndexOf(tok, 0) === 0) { found = true; break; } }
-          all = found;
+      var score = -1, exact = 0, all = true;
+      for (var k = 0; k < qt.length && all; k++) {
+        var tok = qt[k], found = false;
+        for (var j = 0; j < e.toks.length; j++) {
+          if (e.toks[j].lastIndexOf(tok, 0) === 0) { found = true; if (e.toks[j] === tok) exact++; break; }
         }
-        if (all) {
-          score = 50;
-          if (e.n.lastIndexOf(q, 0) === 0) score += 15;
-          if (e.toks[e.toks.length - 1].lastIndexOf(last, 0) === 0) score += 8;
-        } else if (qc.length >= 4 && e.c.indexOf(qc) >= 0) score = 20;
+        all = found;
       }
+      if (all) {
+        // Whole-word hits beat prefixes, last names beat first names
+        // ("damon" -> Johnny Damon), and players are sorted by fame, so
+        // the well-known one floats up ("babe" -> Babe Ruth, not Loren Babe).
+        score = 50 + 12 * exact;
+        if (e.last.lastIndexOf(last, 0) === 0) score += 15;
+        if (e.n.lastIndexOf(q, 0) === 0) score += 6;
+        if (e.n === q && e.toks.length > 1) score += 20;
+        score += i < 100 ? 14 : i < 500 ? 10 : i < 2500 ? 5 : 0;
+      } else if (qc.length >= 4 && e.c.indexOf(qc) >= 0) score = 20;
       if (score >= 0) hits.push([score, i]);
     }
     hits.sort(function (a, b) { return b[0] - a[0] || a[1] - b[1]; });
@@ -307,13 +339,16 @@
         while (gi < left.length - 1 && x >= left[gi]) { x -= left[gi]; gi++; }
         var q = QUEUES[slot[gi]];
         if (q.used.size >= q.order.length) q.used.clear();
-        var fallback = -1, pick = -1, seen = 0;
-        for (var i = 0; i < q.order.length && seen < 40; i++) {
+        // Take the next unused prompt at the target difficulty, else the
+        // nearest difficulty, scanning the queue in its fixed order.
+        var fallback = -1, gap = 9, pick = -1, seen = 0;
+        for (var i = 0; i < q.order.length && seen < 400; i++) {
           var pi = q.order[i];
           if (q.used.has(pi) || chosen.indexOf(pi) >= 0 || teamClash(pi, usedTeams)) continue;
           seen++;
-          if (fallback < 0) fallback = pi;
-          if (D.prompts[pi].d === diffs[s]) { pick = pi; break; }
+          var dd = Math.abs(D.prompts[pi].d - diffs[s]);
+          if (dd === 0) { pick = pi; break; }
+          if (dd < gap) { gap = dd; fallback = pi; }
         }
         if (pick < 0) pick = fallback;
         if (pick < 0) { // every remaining prompt clashes: start a new cycle for this group
@@ -732,6 +767,7 @@
     }
     s += '<polygon class="base' + (n >= 4 ? ' on' : '') + '" points="44,84 56,84 56,90 50,95 44,90"/>';
     if (t < 0) s += '<text class="runk" x="50" y="62" text-anchor="middle">K</text>';
+    if (n >= 4) s += '<circle class="hr-ball" cx="50" cy="86" r="4"/>';
     return s + '</svg>';
   }
 
@@ -794,10 +830,14 @@
       '<article class="card result">' +
         promptHeader(p) +
         '<h2 class="prompt prompt-small">' + esc(p.t) + '</h2>' +
+        (p.s ? '<p class="sub">' + esc(p.s) + '</p>' : '') +
         '<div class="verdict">' + diamond(x.t) +
           '<div><span class="verdict-tier pop tier-' + t.key + '">' + t.label + '</span>' +
           '<span class="verdict-pts">+' + x.pts + ' ft</span>' +
-          '<p class="verdict-who">' + who + '</p><p class="verdict-why">' + why + '</p></div>' +
+          '<p class="verdict-who">' + who + '</p><p class="verdict-why">' + why + '</p>' +
+          (x.p >= 0 && playerTeams(x.p).length
+            ? '<p class="verdict-teams"><span>Franchises (current names)</span> ' + teamLine(x.p, p.tm || []) + '</p>' : '') +
+          '</div>' +
         '</div>' +
         '<div class="answers"><h3>Most common answers</h3>' + nameChips(h.common) + '</div>' +
         '<div class="answers"><h3>' + (h.deepTier === 5 ? 'Home runs you could have hit' : TIERS[h.deepTier].label + 's you could have hit') + '</h3>' + nameChips(h.deep) + '</div>' +
@@ -827,7 +867,7 @@
       : 'Moonshot Daily #' + G.num;
     if (G.hard) head += ' · Hard mode';
     var squares = G.inn.map(function (x) { return tierOf(x.t).sq; }).join('');
-    return head + ' · ' + ft + ' ft\n' + squares + '\n' + distanceLabel(ft);
+    return head + ' · ' + ft + ' ft\n' + squares + '\n' + distanceLabel(ft) + (SHARE_URL ? '\n' + SHARE_URL : '');
   }
 
   // Overhead view of a ballpark with the game's total as one long fly ball.
@@ -860,7 +900,7 @@
       return '<path class="ring" d="M' + a[0].toFixed(1) + ',' + a[1].toFixed(1) + ' A' + (d * S) + ',' + (d * S) + ' 0 0 1 ' + b[0].toFixed(1) + ',' + b[1].toFixed(1) + '"/>' +
         (d >= 500 ? '<text class="ring-lbl" x="' + (b[0] + 8).toFixed(1) + '" y="' + (b[1] + 8).toFixed(1) + '">' + d + '</text>' : '');
     }).join('');
-    var fl = pt(330, q45), cf = pt(400, 0);
+    var fl = pt(330, q45);
     var diamondPts = [[0, 0], pt(90, q45), pt(127.3, 0), pt(90, -q45)].map(function (q) { return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join(' ');
     var lineL = pt(720, -q45), lineR = pt(720, q45);
     var labelY = Math.max(land[1] - 16, -720 * S + 10);
@@ -873,7 +913,6 @@
       '<polygon class="dirt" points="' + diamondPts + '"/>' +
       '<polyline class="fence" points="' + fence.join(' ') + '"/>' +
       '<text class="fence-lbl" x="' + (fl[0] + 10).toFixed(1) + '" y="' + (fl[1] + 26).toFixed(1) + '">330</text>' +
-      '<text class="fence-lbl" x="' + (cf[0] + 34).toFixed(1) + '" y="' + (cf[1] + 30).toFixed(1) + '">400</text>' +
       '<path class="flight" d="' + path + '" pathLength="1"/>' +
       '<circle class="ball" cx="' + land[0].toFixed(1) + '" cy="' + land[1].toFixed(1) + '" r="7"/>' +
       '<text class="land-lbl" x="' + land[0].toFixed(1) + '" y="' + labelY.toFixed(1) + '" text-anchor="middle">' + ft + ' ft</text>' +

@@ -35,6 +35,19 @@ const ok = (cond, msg) => { if (!cond) fails.push(msg); };
   const flat = sched.flat();
   ok(sched.every((d) => d.length === 7 && new Set(d).size === 7), 'each daily has 7 distinct prompts');
   ok(new Set(flat).size === flat.length, `no prompt repeats in 120 dailies (${flat.length - new Set(flat).size} repeats)`);
+  const balance = await page.evaluate(() => {
+    const byId = Object.fromEntries(window.MOONSHOT_DATA.prompts.map((p) => [p.id, p]));
+    let hard4 = 0, clash = 0;
+    for (let n = 1; n <= 180; n++) {
+      const ps = window.MoonshotDebug.dailyIds(n).map((id) => byId[id]);
+      if (ps.filter((p) => p.d === 3).length >= 4) hard4++;
+      const tms = ps.flatMap((p) => p.tm || []);
+      if (new Set(tms).size !== tms.length) clash++;
+    }
+    return { hard4, clash };
+  });
+  ok(balance.hard4 <= 15, `few dailies are stacked with hard prompts (${balance.hard4} of 180)`);
+  ok(balance.clash === 0, 'no daily uses the same franchise twice');
   const again = await page.evaluate(() => window.MoonshotDebug.dailyIds(37));
   ok(JSON.stringify(again) === JSON.stringify(sched[36]), 'schedule is deterministic');
 
@@ -45,6 +58,8 @@ const ok = (cond, msg) => { if (!cond) fails.push(msg); };
   ok(s1b === 2, 'a bare name finds both Griffeys');
   const s1c = await page.evaluate(() => window.MoonshotDebug.search('bobby bonds jr').length);
   ok(s1c >= 1, 'an unknown suffix falls back to the bare name');
+  const s0 = await page.evaluate(() => window.MOONSHOT_DATA.players[window.MoonshotDebug.search('damon')[0]][0]);
+  ok(s0 === 'Johnny Damon', 'a last name finds the famous player first: ' + s0);
   const s2 = await page.evaluate(() => window.MoonshotDebug.search('ronald acuna').length);
   ok(s2 >= 1, 'accent-insensitive search');
   const s3 = await page.evaluate(() => window.MoonshotDebug.search("o'neill").length);
