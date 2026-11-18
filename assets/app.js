@@ -668,6 +668,18 @@
     startClock();
     var input = $('#guess');
     try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
+    // Phones: once the keyboard opens, bring the answer box (and its list) into view.
+    input.addEventListener('focus', function () {
+      if (window.innerHeight < 720) setTimeout(function () { input.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 250);
+    });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', function onResize() {
+        if (!document.body.contains(input)) { window.visualViewport.removeEventListener('resize', onResize); return; }
+        if (document.activeElement === input && window.visualViewport.height < window.innerHeight * 0.8) {
+          input.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }
+      });
+    }
   }
 
   // ---------- pitch clock ----------
@@ -1224,7 +1236,19 @@
     });
   }
 
+  // The pitch clock doesn't stop for menus, so they wait until the at-bat is over.
+  function atBat() {
+    if (G && G.phase === 'pitch') {
+      toast('The pitch clock is running. Finish this at-bat first.');
+      var input = $('#guess');
+      if (input) input.focus();
+      return true;
+    }
+    return false;
+  }
+
   function openStats() {
+    if (atBat()) return;
     var s = load('stats', blankStats());
     var u = load('ustats', { played: 0, best: 0, total: 0 });
     var avg = s.played ? Math.round(s.total / s.played) : 0;
@@ -1251,6 +1275,7 @@
   }
 
   function openArchive() {
+    if (atBat()) return;
     var today = todayNum();
     var hist = load('history', {});
     var items = [];
@@ -1279,6 +1304,7 @@
   }
 
   function openHelp() {
+    if (atBat()) return;
     $('#tier-rows').innerHTML = TIERS.concat([K]).map(function (t) {
       var what = t.key === 'k' ? 'Wrong player, a repeat, or the clock ran out.' : t.blurb;
       return '<tr><td><span class="chip tier-' + t.key + '">' + t.label + '</span></td><td>' + t.pts + '</td><td>' + esc(what) + '</td></tr>';

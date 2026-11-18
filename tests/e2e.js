@@ -232,6 +232,9 @@ const ok = (cond, msg) => { if (!cond) fails.push(msg); };
   await tp.waitForSelector('#guess');
   ok(!!(await tp.$('#hard-form')) && !(await tp.$('#results')), 'a name-game inning is typed even without hard mode');
   ok((await tp.textContent('.hard-tag')).includes('Typed'), 'typed inning is labeled');
+  await tp.click('#btn-help');
+  ok(!(await tp.$('#dlg-help[open]')) && (await tp.textContent('#toast')).includes('pitch clock'),
+    'menus wait until the at-bat is over');
   await tc.close();
 
   // --- challenge links ---------------------------------------------------------

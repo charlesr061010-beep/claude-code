@@ -260,6 +260,17 @@ has("bh-japan-as", "Shohei Ohtani", "Ichiro Suzuki", "Hideo Nomo")
 check(all(PROMPTS[k].get("ty") for k in PROMPTS if k.startswith(("fin-", "deb-", "n-"))),
       "name-game, debut and last-season prompts are typed innings")
 
+# --- The 2025 season (the newest, most error-prone data) ------------------------------------------
+has("a-roy", "Nick Kurtz", "Drake Baldwin")
+has("ta-mvp-NYY", "Aaron Judge")
+has("ta-ws-LAD", "Yoshinobu Yamamoto", "Shohei Ohtani")
+has("ta-pen-TOR", "Vladimir Guerrero Jr.", "Joe Carter")
+has("a-cpoy", "Jacob deGrom")
+has("now-LAD-2025", "Shohei Ohtani", "Yoshinobu Yamamoto", "Freddie Freeman", "Mookie Betts")
+has("now-NYY-2025", "Aaron Judge", "Paul Goldschmidt")
+has("now-NYM-2025", "Juan Soto", "Pete Alonso")
+lacks("now-NYM-2025", "Jacob deGrom")
+
 # --- Tier sanity ---------------------------------------------------------------------------------
 for p in D["prompts"]:
     tiers = [x & 7 for x in p["a"]]
