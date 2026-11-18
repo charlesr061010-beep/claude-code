@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Moonshot</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="A daily baseball trivia game: name the rarest valid player for each prompt.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600;700&family=Big+Shoulders+Display:wght@700;800;900&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand">
+      <h1 class="wordmark">Moonshot</h1>
+      <p class="tagline">The rarer the answer, the farther it flies.</p>
+    </div>
+    <nav class="modes" aria-label="Game mode">
+      <button type="button" class="mode" id="mode-daily" aria-pressed="true">Daily <span id="daily-num"></span></button>
+      <button type="button" class="mode" id="mode-unlimited" aria-pressed="false">Unlimited</button>
+    </nav>
+    <div class="tools">
+      <button type="button" class="icon-btn" id="btn-stats" aria-label="Your stats" title="Your stats">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V4M19 20v-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
+      </button>
+      <button type="button" class="icon-btn" id="btn-help" aria-label="How to play" title="How to play">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="12" cy="17" r="1.25" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="board" aria-label="Line score">
+    <div class="board-grid" id="board"></div>
+  </section>
+
+  <main id="stage" class="stage" aria-live="polite">
+    <div class="loading">Loading the rosters…</div>
+  </main>
+
+  <footer class="foot">
+    <p>Answers are checked against the Lahman Baseball Database (SABR) through the <span id="thru">2025</span> season, Negro Leagues included. Rarity is an editorial estimate built from fame, awards and how closely a player is tied to the prompt, not from live votes.</p>
+    <p id="bank-size"></p>
+  </footer>
+</div>
+
+<dialog id="dlg-help" class="dlg" aria-labelledby="help-title">
+  <form method="dialog" class="dlg-inner">
+    <h2 id="help-title">How to play</h2>
+    <ol class="rules">
+      <li><strong>Seven innings, seven prompts.</strong> For each one, name a single MLB player who fits.</li>
+      <li><strong>Go deep.</strong> Every correct answer scores, but rare answers fly farther. Your total is your distance in feet; 700 ft is perfect.</li>
+      <li><strong>Pitch clock: 30 seconds.</strong> Run out of time or name someone who doesn't fit and it's a strikeout.</li>
+      <li><strong>One at-bat per player.</strong> You can't use the same player twice in a game.</li>
+    </ol>
+    <table class="tier-table">
+      <thead><tr><th scope="col">Result</th><th scope="col">Feet</th><th scope="col">What it means</th></tr></thead>
+      <tbody id="tier-rows"></tbody>
+    </table>
+    <p class="fine">A new daily game starts at midnight your time. Unlimited deals a fresh game whenever you want one. Team prompts count the whole franchise: Expos seasons count for the Nationals, Brooklyn for the Dodgers.</p>
+    <button class="btn primary" value="close">Got it</button>
+  </form>
+</dialog>
+
+<dialog id="dlg-stats" class="dlg" aria-labelledby="stats-title">
+  <form method="dialog" class="dlg-inner">
+    <h2 id="stats-title">Your daily stats</h2>
+    <div id="stats-body"></div>
+    <button class="btn primary" value="close">Close</button>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="data/moonshot-data.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
