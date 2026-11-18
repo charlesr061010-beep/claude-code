@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Moonshot app icon: a baseball arcing over the left-field wall. -->
+  <rect width="512" height="512" rx="96" fill="#1d4a33"/>
+  <path d="M64 420 Q256 300 448 420" fill="none" stroke="#a3c9af" stroke-width="10" stroke-dasharray="6 18" stroke-linecap="round"/>
+  <path d="M96 392 Q220 80 392 150" fill="none" stroke="#f2c230" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="392" cy="150" r="72" fill="#ffffff"/>
+  <path d="M342 98 Q372 150 342 202" fill="none" stroke="#c33a2e" stroke-width="9" stroke-linecap="round"/>
+  <path d="M442 98 Q412 150 442 202" fill="none" stroke="#c33a2e" stroke-width="9" stroke-linecap="round"/>
+</svg>

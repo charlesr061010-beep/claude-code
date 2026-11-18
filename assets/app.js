@@ -1356,6 +1356,18 @@
     }
   }
 
+  // Offline support on a real host (GitHub Pages and the like). Skipped in
+  // frames, from files, and on localhost unless ?sw=1, so development reloads
+  // never serve a stale cached copy.
+  (function registerServiceWorker() {
+    var local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && !/[?&]sw=1/.test(location.search);
+    if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol) || local) return;
+    try { if (window.self !== window.top) return; } catch (e) { return; }
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () { /* offline play is optional */ });
+    });
+  })();
+
   var hot = window.claude && window.claude.hot;
   if (hot && typeof hot.snapshot === 'function') {
     try { hot.snapshot(function () { return { G: G }; }); } catch (e) { /* optional */ }

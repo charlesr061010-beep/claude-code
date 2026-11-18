@@ -26,6 +26,8 @@ Upper deck
 - **Daily:** everyone gets the same seven prompts, and a new game starts at local midnight (Daily #1 is Nov 18, 2026). Each prompt group is dealt from its own fixed shuffled queue, so no daily prompt repeats for about six months, no daily uses the same franchise twice, and difficulty ramps from easy to hard.
 - **Unlimited:** fresh random games that skip prompts you've seen recently. You can focus on one **team** (all seven innings about the Mariners, say) or one **category** (franchises, teammates, honors, birthplaces, name games).
 - **Hard mode:** no name suggestions; type the full name and press Enter. Misspellings aren't strikeouts, but the clock keeps running.
+- **Typed innings:** a few prompts would be answered by the suggestion list itself ("Last name starts with Q", "Made his debut in 2018"), so those innings are always typed, for everyone.
+- **Challenge links:** an Unlimited result includes a link that deals a friend the same seven prompts.
 - **Autocomplete** covers all 23,000+ players. It shows position and years, and Jr./Sr. are spelled out (Ken Griffey Jr. vs. Sr.).
 - **After each inning** you see your answer's rank, every franchise the player suited up for (the prompt's teams in bold), the most common answers, and the deep cuts you could have used.
 - **Box score:** every valid answer for every prompt, filterable, plus a ballpark chart of your total distance and a shareable result.
@@ -79,7 +81,9 @@ python3 -m http.server 8765    # then visit http://localhost:8765
 
 ### Publishing on GitHub Pages
 
-`.github/workflows/pages.yml` deploys the site on every push to `main`. One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**. Shared results include the Pages URL automatically. To use a different host, set `SHARE_URL` at the top of `assets/app.js`.
+`.github/workflows/pages.yml` deploys the site on every push to `main`. One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**. Shared results and challenge links use the Pages URL automatically. To use a different host, set `SHARE_URL` at the top of `assets/app.js`.
+
+On a real host the game is installable (`manifest.webmanifest`) and works offline after the first visit (`sw.js`, stale-while-revalidate). Bump `VERSION` in `sw.js` when the file list changes. The service worker is skipped on localhost, so development reloads never serve a cached copy; add `?sw=1` to test it locally.
 
 ## Tests
 
@@ -91,7 +95,7 @@ python3 -m http.server 8765 &
 node tests/e2e.js http://localhost:8765/    # plays a full game in Chromium
 ```
 
-The e2e test plays a daily game: right answers, a wrong one, and a timeout that survives a reload. It also checks that 120 dailies never repeat a prompt and that difficulty stays balanced, and it exercises search ranking, team and category focus, hard mode, the archive, midnight rollover, the stats chart, and a phone-width layout in dark mode. `.github/workflows/ci.yml` runs all three suites on every push.
+The e2e test plays a daily game: right answers, a wrong one, and a timeout that survives a reload. It also checks that 120 dailies never repeat a prompt and that difficulty stays balanced, and it exercises search ranking, team and category focus, hard mode, the archive, midnight rollover, the stats chart, typed innings, challenge links, offline play, and a phone-width layout in dark mode. `.github/workflows/ci.yml` runs all three suites on every push.
 
 ## Rebuilding the data
 
@@ -115,8 +119,11 @@ Prompt templates, word lists, the icon and Too Cute lists, Jr./Sr. suffixes and 
 
 ```
 index.html               page shell
+manifest.webmanifest     install metadata
+sw.js                    offline cache (real hosts only)
 assets/style.css         scoreboard look, light and dark themes
 assets/app.js            game logic: schedule, pitch clock, search, scoring, sharing, stats
+assets/icons/            app icons
 data/moonshot-data.js    generated prompt and answer bank
 tools/build_data.py      data pipeline
 tests/test_build.py      unit tests for the pipeline helpers

@@ -259,6 +259,25 @@ const ok = (cond, msg) => { if (!cond) fails.push(msg); };
   await friend.close();
   await cc.close();
 
+  // --- offline: once loaded, the game works with no network ----------------------
+  const oc = await browser.newContext({ viewport: { width: 900, height: 800 } });
+  const op = await oc.newPage();
+  op.on('pageerror', (e) => errors.push('offline: ' + e.message));
+  await op.addInitScript(() => { try { localStorage.setItem('moonshot.seenHelp', 'true'); } catch (e) {} });
+  await op.goto(BASE + 'index.html?sw=1');
+  await op.waitForSelector('#btn-start');
+  await op.evaluate(() => navigator.serviceWorker.ready);
+  await op.waitForTimeout(500);
+  await oc.setOffline(true);
+  await op.reload();
+  await op.waitForSelector('#btn-start', { timeout: 15000 });
+  await op.click('#btn-start');
+  await op.waitForSelector('#guess');
+  ok(true, 'plays offline');
+  const manifest = await op.evaluate(() => document.querySelector('link[rel=manifest]').href);
+  ok(/manifest\.webmanifest$/.test(manifest), 'manifest linked');
+  await oc.close();
+
   // --- phone, dark -------------------------------------------------------------
   const m = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
   const mp = await m.newPage();
