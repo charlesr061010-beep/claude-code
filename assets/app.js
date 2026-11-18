@@ -458,12 +458,49 @@
   function promptAt(i) { return PROMPT_INDEX[G.ids[i]]; }
   function usedPlayers() { return G.inn.filter(function (x) { return x.p >= 0; }).map(function (x) { return x.p; }); }
   function totalFt(g) { return (g || G).inn.reduce(function (s, x) { return s + x.pts; }, 0); }
+  // ---------- challenge links ----------
+  // #c-<bank>-<i1>-...-<i7>: prompt indices in base 36, plus a 4-character
+  // fingerprint of the question bank so an old link can't deal the wrong prompts.
+  var BANK_TAG = null;
+  function bankTag() {
+    if (!BANK_TAG) BANK_TAG = hashStr(D.prompts.map(function (p) { return p.id; }).join(',')).toString(36).slice(-4);
+    return BANK_TAG;
+  }
+  function challengeHash(g) {
+    return '#c-' + bankTag() + '-' + g.ids.map(function (id) { return PROMPT_INDEX[id].toString(36); }).join('-');
+  }
+  var FRAMED = (function () { try { return window.self !== window.top; } catch (e) { return true; } })();
+  function challengeLink(g) {
+    // Inside a frame (an embed), our own URL isn't the one people share.
+    if (FRAMED && !SHARE_URL) return null;
+    return (SHARE_URL || location.href.split('#')[0]) + challengeHash(g);
+  }
+  function readChallenge(hash) {
+    var m = /^#c-([0-9a-z]{1,4})-([0-9a-z]+(?:-[0-9a-z]+){6})$/.exec(hash || '');
+    if (!m) return null;
+    if (m[1] !== bankTag()) return { stale: true };
+    var ids = m[2].split('-').map(function (x) { var p = D.prompts[parseInt(x, 36)]; return p && p.id; });
+    return validIds(ids) && new Set(ids).size === INNINGS ? { ids: ids } : null;
+  }
+  function takeChallenge() {
+    var c = readChallenge(location.hash);
+    if (!c) return false;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* keep going */ }
+    if (c.stale) { toast('That challenge link is from an older question bank, so here is your regular game.'); return false; }
+    var count = (load('ustats', { played: 0 }).played || 0) + 1;
+    MODE = 'unlimited';
+    save('mode', 'unlimited');
+    G = newGame('unlimited', count, c.ids, { challenge: true });
+    save('unlimited', G);
+    return true;
+  }
+
   function gameTitle(g) {
     g = g || G;
     if (g.mode === 'daily') return 'Daily #' + g.num + (g.hard ? ' · Hard' : '');
     if (g.mode === 'archive') return 'Daily #' + g.num + ' (archive)' + (g.hard ? ' · Hard' : '');
-    return 'Unlimited #' + g.num + (g.team ? ' · ' + TEAM_NAMES[g.team] : g.cat ? ' · ' + focusLabel(g.cat) : '') +
-      (g.hard ? ' · Hard' : '');
+    return (g.challenge ? 'Challenge' : 'Unlimited #' + g.num) +
+      (g.team ? ' · ' + TEAM_NAMES[g.team] : g.cat ? ' · ' + focusLabel(g.cat) : '') + (g.hard ? ' · Hard' : '');
   }
 
   // ------------------------------------------------------------------
@@ -597,6 +634,7 @@
   function renderPitch() {
     var pi = promptAt(G.cur);
     var p = D.prompts[pi];
+    var typed = G.hard || !!p.ty;
     $('#stage').innerHTML =
       '<article class="card atbat">' +
         promptHeader(p) +
@@ -606,9 +644,10 @@
         '<div class="clock" id="clock"><span class="clock-num" id="clock-num" aria-hidden="true">' + CLOCK + '</span>' +
           '<div class="clock-bar" aria-hidden="true"><div class="clock-fill" id="clock-fill"></div></div>' +
           '<span class="sr-only" id="clock-sr" aria-live="polite"></span></div>' +
-        (G.hard
+        (typed
           ? '<form class="search" id="hard-form" autocomplete="off">' +
-              '<label for="guess">Your answer <span class="hard-tag">Hard mode</span></label>' +
+              '<label for="guess">Your answer <span class="hard-tag">' + (G.hard ? 'Hard mode' : 'Typed inning') + '</span></label>' +
+              (!G.hard ? '<p class="typed-note">Suggestions would give this one away, so type the full name and press Enter.</p>' : '') +
               '<div class="hard-row"><input id="guess" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" ' +
                 'placeholder="Full name, then Enter" aria-describedby="hard-msg">' +
               '<button class="btn primary" type="submit">Swing</button></div>' +
@@ -623,7 +662,7 @@
             '</div>') +
         '<div class="row"><button class="btn ghost small" id="btn-skip" type="button">Take the strikeout</button></div>' +
       '</article>';
-    if (G.hard) wireHard(pi); else wireSearch();
+    if (typed) wireHard(pi); else wireSearch();
     $('#btn-skip').addEventListener('click', function () { answer(-1, false); });
     locked = false;
     startClock();
@@ -870,11 +909,17 @@
   function shareText() {
     var ft = totalFt();
     var head = G.mode === 'unlimited'
-      ? 'Moonshot Unlimited' + (G.team ? ' (' + TEAM_NAMES[G.team] + ')' : G.cat ? ' (' + focusLabel(G.cat) + ')' : '')
+      ? 'Moonshot ' + (G.challenge ? 'Challenge' : 'Unlimited') +
+        (G.team ? ' (' + TEAM_NAMES[G.team] + ')' : G.cat ? ' (' + focusLabel(G.cat) + ')' : '')
       : 'Moonshot Daily #' + G.num;
     if (G.hard) head += ' · Hard mode';
     var squares = G.inn.map(function (x) { return tierOf(x.t).sq; }).join('');
-    return head + ' · ' + ft + ' ft\n' + squares + '\n' + distanceLabel(ft) + (SHARE_URL ? '\n' + SHARE_URL : '');
+    var link = SHARE_URL ? '\n' + SHARE_URL : '';
+    if (G.mode === 'unlimited') {
+      var cl = challengeLink(G);
+      link = cl ? '\nBeat it: ' + cl : '\nChallenge code (add it to the game link): ' + challengeHash(G);
+    }
+    return head + ' · ' + ft + ' ft\n' + squares + '\n' + distanceLabel(ft) + link;
   }
 
   // Overhead view of a ballpark with the game's total as one long fly ball.
@@ -979,6 +1024,12 @@
     if (past) past.addEventListener('click', openArchive);
     var tn = $('#team-next');
     if (tn) tn.addEventListener('change', function () { save('team', tn.value); });
+    if (G.mode === 'unlimited') {
+      var note = document.createElement('p');
+      note.className = 'next-daily';
+      note.textContent = 'Copy result includes a link that deals a friend these same seven prompts.';
+      $('#share-text').insertAdjacentElement('afterend', note);
+    }
     var cn = $('#cat-next');
     if (cn) cn.addEventListener('change', function () { save('cat', cn.value); });
     $$('details.all').forEach(function (d) {
@@ -1276,6 +1327,7 @@
     indexData();
     window.MoonshotDebug = {
       dailyIds: dailyIds, randomIds: randomIds, search: search, todayNum: todayNum, resolveName: resolveName,
+      challengeLink: function () { return challengeLink(G) || challengeHash(G); },
       answers: function (id) { return Array.prototype.slice.call(ans(PROMPT_INDEX[id])); }
     };
     $('#daily-num').textContent = '#' + todayNum();
@@ -1288,7 +1340,10 @@
     $('#btn-archive').addEventListener('click', openArchive);
 
     MODE = load('mode', 'daily') === 'unlimited' ? 'unlimited' : 'daily';
-    if (hotData && hotData.G && validIds(hotData.G.ids)) {
+    window.addEventListener('hashchange', function () { if (takeChallenge()) resumeOrRender(); });
+    if (takeChallenge()) {
+      /* G is set */
+    } else if (hotData && hotData.G && validIds(hotData.G.ids)) {
       G = hotData.G;
       MODE = G.mode === 'unlimited' ? 'unlimited' : 'daily';
     } else {

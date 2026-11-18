@@ -372,6 +372,10 @@ Sandy Alomar:1964:Sr., Pete Rose:1997:Jr., Tim Raines:2001:Jr., Michael Harris:2
 Jose Cruz:1997:Jr., Tony Gwynn:2006:Jr., Gary Matthews:1999:Jr., Gary Matthews:1972:Sr.,
 Eric Young:2009:Jr., Eric Young:1992:Sr., Delino DeShields:2015:Jr., Delino DeShields:1990:Sr.""".replace("\n", " ").split(",") if x.strip()]
 
+# Prompts the autocomplete list would answer by itself (the name is the
+# criterion, or the list's first season is): these innings are always typed.
+TYPED_CATEGORIES = {"names", "debut"}
+
 # 2026 Hall of Fame class (elected after the Lahman snapshot was taken).
 HOF_2026 = [("Carlos", "Beltran"), ("Andruw", "Jones"), ("Jeff", "Kent")]
 
@@ -1731,6 +1735,8 @@ def main():
             o["s"] = sub
         if pr["team"]:
             o["tm"] = pr["team"]
+        if pr["cat"] in TYPED_CATEGORIES:
+            o["ty"] = 1
         prompts_out.append(o)
 
     meta = {

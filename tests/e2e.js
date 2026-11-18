@@ -211,6 +211,54 @@ const ok = (cond, msg) => { if (!cond) fails.push(msg); };
   ok(!(await rp.$eval('#chart-tip', (t) => t.hidden)), 'keyboard focus shows the chart tooltip');
   await rc.close();
 
+  // --- typed innings: name games can't be answered from the suggestion list ---------
+  const tc = await browser.newContext({ viewport: { width: 900, height: 800 } });
+  const tp = await tc.newPage();
+  tp.on('pageerror', (e) => errors.push('typed: ' + e.message));
+  await tp.addInitScript(() => { try { localStorage.setItem('moonshot.seenHelp', 'true'); localStorage.setItem('moonshot.mode', '"unlimited"'); } catch (e) {} });
+  await tp.goto(BASE + 'index.html');
+  await tp.waitForSelector('#btn-start');
+  await tp.evaluate(() => {
+    const D = window.MOONSHOT_DATA;
+    const typedIds = D.prompts.filter((p) => p.ty).map((p) => p.id);
+    const g = JSON.parse(localStorage.getItem('moonshot.unlimited'));
+    g.ids = [typedIds[0]].concat(g.ids.filter((id) => !typedIds.includes(id)).slice(0, 6));
+    localStorage.setItem('moonshot.unlimited', JSON.stringify(g));
+    localStorage.setItem('moonshot.hard', 'false');
+  });
+  await tp.reload();
+  await tp.waitForSelector('#btn-start');
+  await tp.click('#btn-start');
+  await tp.waitForSelector('#guess');
+  ok(!!(await tp.$('#hard-form')) && !(await tp.$('#results')), 'a name-game inning is typed even without hard mode');
+  ok((await tp.textContent('.hard-tag')).includes('Typed'), 'typed inning is labeled');
+  await tc.close();
+
+  // --- challenge links ---------------------------------------------------------
+  const cc = await browser.newContext({ viewport: { width: 900, height: 800 } });
+  const cp = await cc.newPage();
+  cp.on('pageerror', (e) => errors.push('challenge: ' + e.message));
+  await cp.addInitScript(() => { try { localStorage.setItem('moonshot.seenHelp', 'true'); localStorage.setItem('moonshot.mode', '"unlimited"'); } catch (e) {} });
+  await cp.goto(BASE + 'index.html');
+  await cp.waitForSelector('#btn-start');
+  const sent = await cp.evaluate(() => ({ ids: JSON.parse(localStorage.getItem('moonshot.unlimited')).ids, link: window.MoonshotDebug.challengeLink() }));
+  ok(/#c-[0-9a-z]{1,4}(-[0-9a-z]+){7}$/.test(sent.link), 'challenge link format: ' + sent.link);
+  const friend = await browser.newContext({ viewport: { width: 900, height: 800 } });
+  const fp = await friend.newPage();
+  fp.on('pageerror', (e) => errors.push('friend: ' + e.message));
+  await fp.addInitScript(() => { try { localStorage.setItem('moonshot.seenHelp', 'true'); } catch (e) {} });
+  await fp.goto(BASE + 'index.html' + sent.link.slice(sent.link.indexOf('#')));
+  await fp.waitForSelector('#btn-start');
+  const got = await fp.evaluate(() => JSON.parse(localStorage.getItem('moonshot.unlimited')));
+  ok(JSON.stringify(got.ids) === JSON.stringify(sent.ids) && got.challenge, 'a challenge link deals the same seven prompts');
+  ok((await fp.textContent('.intro .eyebrow')).includes('Challenge'), 'challenge game is labeled');
+  ok(!(await fp.evaluate(() => location.hash)), 'challenge hash is cleared after use');
+  await fp.goto(BASE + 'index.html#c-zzzz-1-2-3-4-5-6-7');
+  await fp.waitForSelector('#btn-start');
+  ok((await fp.textContent('#toast')).includes('older question bank'), 'a stale challenge link explains itself');
+  await friend.close();
+  await cc.close();
+
   // --- phone, dark -------------------------------------------------------------
   const m = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
   const mp = await m.newPage();
