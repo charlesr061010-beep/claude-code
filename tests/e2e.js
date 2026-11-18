@@ -94,7 +94,9 @@ const ok = (cond, msg) => { if (!cond) fails.push(msg); };
       // Skip names shared by many players so the pick shows in the 8-row dropdown.
       const count = {};
       D.players.forEach((q) => { count[q[0]] = (count[q[0]] || 0) + 1; });
-      const clear = (i) => !used.has(i) && count[D.players[i][0]] <= 6;
+      // Typed innings resolve a full name, so there the name must be unique.
+      const typed = !!document.querySelector('#hard-form');
+      const clear = (i) => !used.has(i) && count[D.players[i][0]] <= (typed ? 1 : 6);
       if (how === 'wrong') {
         const valid = new Set(p.a.map((x) => x >> 3));
         for (let i = 0; i < D.players.length; i++) if (!valid.has(i) && clear(i)) return { i, name: D.players[i][0], y: D.players[i][1], valid: false };
@@ -104,8 +106,12 @@ const ok = (cond, msg) => { if (!cond) fails.push(msg); };
       return { i, name: D.players[i][0], y: D.players[i][1], valid: true };
     }, plan[i]);
     await page.fill('#guess', pick.name);
-    await page.waitForSelector('#results li[data-pid]');
-    await page.click(`#results li[data-pid="${pick.i}"]`);
+    if (await page.$('#hard-form')) {
+      await page.press('#guess', 'Enter');      // typed inning: no suggestion list
+    } else {
+      await page.waitForSelector('#results li[data-pid]');
+      await page.click(`#results li[data-pid="${pick.i}"]`);
+    }
     await page.waitForSelector('#btn-next');
     const verdict = await page.textContent('.verdict');
     if (pick.valid) ok(!verdict.includes('Strikeout'), `inning ${i + 1}: valid pick ${pick.name} scored`);

@@ -343,7 +343,28 @@ Honus Wagner:1897, Walter Johnson:1907, Christy Mathewson:1900, Cy Young:1890, M
 Bob Feller:1936, Roy Campanella:1948, Pee Wee Reese:1940, Robin Roberts:1948, Luis Aparicio:1956,
 Minnie Minoso:1949, Lou Brock:1961, Thurman Munson:1969, Catfish Hunter:1965, Rollie Fingers:1968,
 Dennis Eckersley:1975, Trevor Hoffman:1993, John Smoltz:1988, Tom Glavine:1987, Mike Mussina:1991,
-Curt Schilling:1988, Josh Gibson:1930
+Curt Schilling:1988, Josh Gibson:1930,
+Corbin Carroll:2022, Adley Rutschman:2022, Spencer Strider:2021, Austin Riley:2019, Matt Olson:2016,
+Ozzie Albies:2017, Rafael Devers:2017, Xander Bogaerts:2013, Trea Turner:2015, Manny Machado:2012,
+Jose Abreu:2014, Yordan Alvarez:2019, Alex Bregman:2016, Kyle Tucker:2018, George Springer:2014,
+Bo Bichette:2019, Marcus Semien:2013, Corey Kluber:2011, Chris Sale:2010, Stephen Strasburg:2010,
+Madison Bumgarner:2009, Cole Hamels:2006, Cliff Lee:2002, Chase Utley:2003, Ryan Howard:2004,
+Jimmy Rollins:2000, Matt Kemp:2006, Adrian Gonzalez:2004, Prince Fielder:2005, Ryan Braun:2007,
+Robinson Cano:2005, David Wright:2004, Jose Reyes:2003, Johan Santana:2000, Mark Teixeira:2003,
+Carlos Delgado:1993, Nomar Garciaparra:1996, Jason Varitek:1997, Johnny Damon:1995, Bernie Williams:1991,
+Jorge Posada:1995, Paul O'Neill:1985, Andy Pettitte:1995, Roberto Alomar:1988, Barry Larkin:1986,
+Kenny Lofton:1991, Omar Vizquel:1989, Mark Grace:1988, Kerry Wood:1998, Rafael Palmeiro:1986,
+Juan Gonzalez:1989, Will Clark:1986, Matt Williams:1987, Jeff Kent:1992, Gary Sheffield:1988, Mo Vaughn:1991,
+Albert Belle:1989, Fred McGriff:1986, Dave Stewart:1978, Jose Canseco:1985, Orel Hershiser:1983,
+Steve Garvey:1969, Keith Hernandez:1974, Dale Murphy:1976, Jim Rice:1974, Fred Lynn:1974, Carlton Fisk:1969,
+Jim Palmer:1965, Ron Santo:1960, Billy Williams:1959, Fergie Jenkins:1965, Juan Marichal:1960,
+Orlando Cepeda:1958, Tony Oliva:1962, Denny McLain:1963, Don Drysdale:1956, Gil Hodges:1943,
+Ralph Kiner:1946, Phil Rizzuto:1941, Bill Dickey:1928, Charlie Gehringer:1924, Mickey Cochrane:1925,
+Al Simmons:1924, Paul Waner:1926, Pie Traynor:1920, Eddie Collins:1906, Nap Lajoie:1896,
+Shoeless Joe Jackson:1908, Pete Alexander:1911, Ed Walsh:1904, Rube Waddell:1897, Buck Leonard:1934,
+Oscar Charleston:1920, Cool Papa Bell:1922, Larry Doby:1947, Monte Irvin:1949, Hideki Matsui:2003,
+Hideo Nomo:1995, Yu Darvish:2012, Max Fried:2017, Aaron Nola:2015, Zack Wheeler:2013, Blake Snell:2016,
+Justin Morneau:2003, Torii Hunter:1997, Kirk Gibson:1979, Alan Trammell:1977, Lou Whitaker:1977
 """.replace("\n", " ").split(",") if x.strip())]
 
 TIERS = [
@@ -357,7 +378,11 @@ TIERS = [
 ]
 T_BUNT, T_CUTE, T_SINGLE, T_DOUBLE, T_TRIPLE, T_HR = range(6)
 # Estimated pick-share thresholds (fraction of all fans' answers)
-SHARE_BUNT, SHARE_SINGLE, SHARE_DOUBLE, SHARE_TRIPLE = 0.03, 0.008, 0.002, 0.0004
+SHARE_BUNT, SHARE_SINGLE = 0.03, 0.008
+# The two top tiers are rank bands at the rare end of each prompt's answer list,
+# so the max score stays scarce no matter how big the pool is.
+HR_BAND = 0.01      # Home Run: the rarest 1% of valid answers (rounded down)
+TRIPLE_BAND = 0.10  # Triple: the rest of the rarest 10%
 SOFTMAX_TAU = 9.0   # fame points per e-fold of pick share
 ASSOC_GAMMA = 3.0   # how hard prompt association (team share, repeat feats) bends the share
 
@@ -463,6 +488,8 @@ class DB:
 # Load + aggregate
 # --------------------------------------------------------------------------
 
+MIN_ANSWERS = 100  # every prompt has at least this many valid answers
+
 TEAMINFO = {}  # (year, teamID) -> W, L, franchise, league, pennant flag, name
 LEADER_SEASONS = defaultdict(list)  # stat key -> [(playerID, year)] for league leaders
 
@@ -482,6 +509,7 @@ def build(data_dir):
     batting = keep(db.rows("Batting"))
     pitching = keep(db.rows("Pitching"))
     awards = db.rows("AwardsPlayers")
+    votes = db.rows("AwardsSharePlayers")
     # The All-Star Game is AL vs NL; East-West and North-South games are separate.
     allstar = [r for r in db.rows("AllstarFull") if r["lgID"] in ("AL", "NL")]
     hof = db.rows("HallOfFame")
@@ -525,6 +553,7 @@ def build(data_dir):
                 "awards": [], "allstar": [], "ws": set(), "post": Counter(),
                 "qg": Counter(), "qg_fr": Counter(), "teams": set(), "award_pos": [],
                 "bat_lg": {}, "pit_lg": {}, "qg_lg": Counter(), "managed": [],
+                "votes": [], "post_fr": set(), "hof_ballot": 0.0,
             }
         return P[pid]
 
@@ -597,6 +626,11 @@ def build(data_dir):
         if r["stint"] == 1:
             p.setdefault("stint1p", {})[y] = fr
 
+    for r in batpost + pitpost:
+        if r["playerID"] in P:
+            fr = franch_of.get((r["yearID"], r["teamID"]))
+            if fr:
+                P[r["playerID"]]["post_fr"].add(fr)
     for r in batpost:
         if r["playerID"] in P:
             p = P[r["playerID"]]
@@ -635,10 +669,23 @@ def build(data_dir):
             fr = franch_of.get((a["yearID"], a["teamID"]))
             P[a["playerID"]]["allstar"].append((a["yearID"], fr))
 
+    # Award voting: every vote-getter, with his finish in that year's race
+    races = defaultdict(list)
+    for v in votes:
+        if v["playerID"] in P and z(v["pointsWon"]) > 0:
+            races[(v["awardID"], v["yearID"], v["lgID"])].append((z(v["pointsWon"]), v["playerID"]))
+    for (award, year, lg), rows in races.items():
+        rows.sort(reverse=True)
+        for rank, (pts, pid) in enumerate(rows, 1):
+            P[pid]["votes"].append((award, year, rank, main_franch(P[pid], year)))
+
     # Hall of Fame (players only) + first-ballot detection
     hof_rows = defaultdict(list)
     for h in hof:
         hof_rows[h["playerID"]].append(h)
+        if h["playerID"] in P and h["votedBy"] == "BBWAA" and h["ballots"] and h["votes"] is not None:
+            p = P[h["playerID"]]
+            p["hof_ballot"] = max(p["hof_ballot"], z(h["votes"]) / h["ballots"])
     for pid, rows in hof_rows.items():
         if pid not in P:
             continue
@@ -762,7 +809,7 @@ class Bank:
         cameo: players who fit only through a brief, famous detour (Too Cute candidates)."""
         if pid in self.ids:
             raise ValueError("duplicate prompt id " + pid)
-        if len(answers) < min_n:
+        if len(answers) < max(min_n, MIN_ANSWERS):
             return False
         self.ids.add(pid)
         self.prompts.append({"id": pid, "text": text, "sub": sub, "cat": cat, "answers": answers,
@@ -906,6 +953,23 @@ def build_prompts(P):
         ("sv20", "Saved 20+ games in a season for the {t}", "pit", lambda c, s: c["SV"] >= 20),
         ("era3", "Posted a sub-3.00 ERA in a season for the {t}", "pit",
          lambda c, s: qualifies_pit(c, s) and era(c) < 3.0),
+        ("hr25", "Hit 25+ home runs in a season for the {t}", "bat", lambda c, s: c["HR"] >= 25),
+        ("hr20", "Hit 20+ home runs in a season for the {t}", "bat", lambda c, s: c["HR"] >= 20),
+        ("rbi80", "Drove in 80+ runs in a season for the {t}", "bat", lambda c, s: c["RBI"] >= 80),
+        ("r90", "Scored 90+ runs in a season for the {t}", "bat", lambda c, s: c["R"] >= 90),
+        ("h170", "Had 170+ hits in a season for the {t}", "bat", lambda c, s: c["H"] >= 170),
+        ("2b30", "Hit 30+ doubles in a season for the {t}", "bat", lambda c, s: c["2B"] >= 30),
+        ("avg290", "Hit .290+ in a season for the {t}", "bat",
+         lambda c, s: qualifies_bat(c, s) and avg(c) >= 0.2895),
+        ("sb20", "Stole 20+ bases in a season for the {t}", "bat", lambda c, s: c["SB"] >= 20),
+        ("w12", "Won 12+ games in a season for the {t}", "pit", lambda c, s: c["W"] >= 12),
+        ("w10", "Won 10+ games in a season for the {t}", "pit", lambda c, s: c["W"] >= 10),
+        ("so150", "Struck out 150+ batters in a season for the {t}", "pit", lambda c, s: c["SO"] >= 150),
+        ("ip200", "Pitched 200+ innings in a season for the {t}", "pit", lambda c, s: c["IPouts"] >= 600),
+        ("sv10", "Saved 10+ games in a season for the {t}", "pit", lambda c, s: c["SV"] >= 10),
+        ("g60", "Pitched in 60+ games in a season for the {t}", "pit", lambda c, s: c["G"] >= 60),
+        ("era35", "Posted a sub-3.50 ERA in a season for the {t}", "pit",
+         lambda c, s: qualifies_pit(c, s) and era(c) < 3.5),
     ]
     SUBS = {"avg300": "Qualified for the batting title (3.1 PA per team game)",
             "era3": "Qualified for the ERA title (1 IP per team game)"}
@@ -971,6 +1035,19 @@ def build_prompts(P):
                if p["y1"] < last_year and p["y1"] in p["fr_years"][fr]}
         bank.add(f"tm-final-{fr}", f"Played his final MLB season with the {tn[fr]}",
                  f"Last season in the majors, careers that ended before {last_year}", "team-misc", ans, team=[fr])
+        # Box-score franchise families (big pools, lots of deep cuts)
+        for key, text, kind, stat in (("hr1", "Homered for the {t}", "bat", "HR"),
+                                      ("sv1", "Recorded a save for the {t}", "pit", "SV"),
+                                      ("sho1", "Threw a shutout for the {t}", "pit", "SHO"),
+                                      ("w1", "Won a game as a pitcher for the {t}", "pit", "W")):
+            src = "bat_fr_season" if kind == "bat" else "pit_fr_season"
+            ans = {}
+            for p in by_fr[fr]:
+                total = sum(c[stat] for (y, f), c in p[src].items() if f == fr)
+                if total > 0:
+                    ans[p["id"]] = assoc_team(p, fr) * min(1.5, 1 + 0.1 * math.log2(1 + total))
+            bank.add(f"tx-{key}-{fr}", text.format(t=tn[fr]), "Regular season, any year with the franchise",
+                     "team-stat", ans, team=[fr])
         # Ten-year men
         ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if len(p["fr_years"][fr]) >= 10}
         bank.add(f"tm-ten-{fr}", f"Played 10+ seasons for the {tn[fr]}", "Any 10 seasons with at least one game",
@@ -1022,6 +1099,13 @@ def build_prompts(P):
             ("sv200", "200+ career saves", lambda p: p["pit"]["SV"] >= 200, 4),
             ("avg300", ".300+ career batting average", lambda p: p["bat"]["PA"] >= 3000 and avg(p["bat"]) >= 0.2995, 6),
             ("sb300", "300+ career stolen bases", lambda p: p["bat"]["SB"] >= 300, 5),
+            ("hr150", "150+ career home runs", lambda p: p["bat"]["HR"] >= 150, 0),
+            ("h1500", "1,500+ career hits", lambda p: p["bat"]["H"] >= 1500, 0),
+            ("w100", "100+ career wins", lambda p: p["pit"]["W"] >= 100, 0),
+            ("k1000", "1,000+ career strikeouts (pitching)", lambda p: p["pit"]["SO"] >= 1000, 0),
+            ("sb150", "150+ career stolen bases", lambda p: p["bat"]["SB"] >= 150, 0),
+            ("g1500", "1,500+ career games played", lambda p: p["G"] >= 1500, 0),
+            ("as3", "3+ All-Star selections", lambda p: p["n_allstar"] >= 3, 0),
         ]
         for key, phrase, pred, mn in CM:
             ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if pred(p)}
@@ -1082,6 +1166,28 @@ def build_prompts(P):
         ("onegame", "Played in exactly one MLB game", lambda p: p["G"] == 1),
         ("lifer15", "Spent 15+ seasons with one franchise and never played elsewhere",
          lambda p: p["seasons"] >= 15 and len([f for f in p["fr_G"] if p["fr_G"][f]]) == 1),
+        ("hr150", "150+ career home runs", lambda p: p["bat"]["HR"] >= 150),
+        ("hr100", "100+ career home runs", lambda p: p["bat"]["HR"] >= 100),
+        ("h1500", "1,500+ career hits", lambda p: p["bat"]["H"] >= 1500),
+        ("h1000", "1,000+ career hits", lambda p: p["bat"]["H"] >= 1000),
+        ("rbi1000", "1,000+ career RBI", lambda p: p["bat"]["RBI"] >= 1000),
+        ("r1000", "1,000+ career runs scored", lambda p: p["bat"]["R"] >= 1000),
+        ("2b300", "300+ career doubles", lambda p: p["bat"]["2B"] >= 300),
+        ("3b100", "100+ career triples", lambda p: p["bat"]["3B"] >= 100),
+        ("sb200", "200+ career stolen bases", lambda p: p["bat"]["SB"] >= 200),
+        ("bb1000", "1,000+ career walks (as a hitter)", lambda p: p["bat"]["BB"] >= 1000),
+        ("avg290", ".290+ career batting average (min. 3,000 PA)",
+         lambda p: p["bat"]["PA"] >= 3000 and avg(p["bat"]) >= 0.2895),
+        ("w150", "150+ career wins", lambda p: p["pit"]["W"] >= 150),
+        ("w100", "100+ career wins", lambda p: p["pit"]["W"] >= 100),
+        ("k1500", "1,500+ career strikeouts (pitching)", lambda p: p["pit"]["SO"] >= 1500),
+        ("k1000", "1,000+ career strikeouts (pitching)", lambda p: p["pit"]["SO"] >= 1000),
+        ("sv50", "50+ career saves", lambda p: p["pit"]["SV"] >= 50),
+        ("pg600", "Pitched in 600+ games", lambda p: p["pit"]["G"] >= 600),
+        ("g2000", "Played in 2,000+ games", lambda p: p["G"] >= 2000),
+        ("seasons15", "Played 15+ seasons in the majors", lambda p: p["seasons"] >= 15),
+        ("hr100sb100", "100+ career home runs and 100+ steals",
+         lambda p: p["bat"]["HR"] >= 100 and p["bat"]["SB"] >= 100),
     ]
     CAREER_SUB = {
         "pg800": "Regular season, all teams combined", "g2500": "Regular season, all teams combined",
@@ -1137,6 +1243,25 @@ def build_prompts(P):
         ("cg25", "Threw 25+ complete games in a season", "pit", lambda c, s: c["CG"] >= 25),
         ("sho8", "Threw 8+ shutouts in a season", "pit", lambda c, s: c["SHO"] >= 8),
         ("pg80", "Pitched in 80+ games in a season", "pit", lambda c, s: c["G"] >= 80),
+        ("hr35", "Hit 35+ home runs in a season", "bat", lambda c, s: c["HR"] >= 35),
+        ("hr30", "Hit 30+ home runs in a season", "bat", lambda c, s: c["HR"] >= 30),
+        ("h190", "Had 190+ hits in a season", "bat", lambda c, s: c["H"] >= 190),
+        ("rbi120", "Drove in 120+ runs in a season", "bat", lambda c, s: c["RBI"] >= 120),
+        ("r120", "Scored 120+ runs in a season", "bat", lambda c, s: c["R"] >= 120),
+        ("2b40", "Hit 40+ doubles in a season", "bat", lambda c, s: c["2B"] >= 40),
+        ("3b12", "Hit 12+ triples in a season", "bat", lambda c, s: c["3B"] >= 12),
+        ("sb40", "Stole 40+ bases in a season", "bat", lambda c, s: c["SB"] >= 40),
+        ("bb100", "Drew 100+ walks in a season", "bat", lambda c, s: c["BB"] >= 100),
+        ("avg330", "Hit .330+ in a season (qualified)", "bat",
+         lambda c, s: qualifies_bat(c, s) and avg(c) >= 0.3295),
+        ("w18", "Won 18+ games in a season", "pit", lambda c, s: c["W"] >= 18),
+        ("so225", "Struck out 225+ batters in a season", "pit", lambda c, s: c["SO"] >= 225),
+        ("so200", "Struck out 200+ batters in a season", "pit", lambda c, s: c["SO"] >= 200),
+        ("sv35", "Saved 35+ games in a season", "pit", lambda c, s: c["SV"] >= 35),
+        ("sv30", "Saved 30+ games in a season", "pit", lambda c, s: c["SV"] >= 30),
+        ("era25", "Sub-2.50 ERA in a season (qualified)", "pit",
+         lambda c, s: qualifies_pit(c, s) and era(c) < 2.5),
+        ("ip250", "Pitched 250+ innings in a season", "pit", lambda c, s: c["IPouts"] >= 750),
     ]
     for key, text, kind, pred in SEASON:
         ans = {}
@@ -1564,6 +1689,11 @@ def build_prompts(P):
         ("w20", "Won 20+ games in a season in the {d}s", "pit", lambda c, s: c["W"] >= 20, 1920),
         ("so200", "Struck out 200+ batters in a season in the {d}s", "pit", lambda c, s: c["SO"] >= 200, 1950),
         ("sv35", "Saved 35+ games in a season in the {d}s", "pit", lambda c, s: c["SV"] >= 35, 1980),
+        ("hr25", "Hit 25+ home runs in a season in the {d}s", "bat", lambda c, s: c["HR"] >= 25, 1920),
+        ("sb30", "Stole 30+ bases in a season in the {d}s", "bat", lambda c, s: c["SB"] >= 30, 1920),
+        ("w15", "Won 15+ games in a season in the {d}s", "pit", lambda c, s: c["W"] >= 15, 1920),
+        ("so150", "Struck out 150+ batters in a season in the {d}s", "pit", lambda c, s: c["SO"] >= 150, 1950),
+        ("sv25", "Saved 25+ games in a season in the {d}s", "pit", lambda c, s: c["SV"] >= 25, 1980),
     ]
     for key, phrase, kind, pred, d0 in DEC_FEATS:
         for d in range(d0, 2030, 10):
@@ -1627,6 +1757,50 @@ def build_prompts(P):
                 ans[p["id"]] = season_bonus(n)
         bank.add(f"rec-{key}", text, sub, "record", ans)
 
+    # ---- 20a. Award voting, Hall of Fame ballots, postseason by franchise ---------------------
+    VOTE_AWARDS = (("Most Valuable Player", "MVP", "mvp"), ("Cy Young Award", "the Cy Young", "cy"),
+                   ("Rookie of the Year", "Rookie of the Year", "roy"))
+    for award, label, slug in VOTE_AWARDS:
+        any_n = None
+        for key, text, cut in ((f"{slug}-any", f"Received a vote for {label}", None),
+                               (f"{slug}-top10", f"Finished in the top 10 of {label} voting", 10),
+                               (f"{slug}-top5", f"Finished in the top 5 of {label} voting", 5),
+                               (f"{slug}-top3", f"Finished in the top 3 of {label} voting", 3)):
+            ans = {}
+            for p in players:
+                n = sum(1 for a, y, rank, f in p["votes"] if a == award and (cut is None or rank <= cut))
+                if n:
+                    ans[p["id"]] = season_bonus(n)
+            if any_n is None:
+                any_n = len(ans)
+            elif len(ans) > 0.85 * any_n:
+                continue  # nearly every vote-getter finished this high: not a different question
+            bank.add(f"v-{key}", text, "Any season, either league", "award", ans)
+    for fr in FR:
+        ans = {}
+        for p in by_fr[fr]:
+            n = sum(1 for a, y, rank, f in p["votes"] if a == "Most Valuable Player" and f == fr)
+            if n:
+                ans[p["id"]] = assoc_team(p, fr) * season_bonus(n)
+        bank.add(f"tv-mvp-{fr}", f"Received an MVP vote as a member of the {tn[fr]}",
+                 "Counted for the team he played most for that season", "team-award", ans, team=[fr])
+        ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if fr in p["post_fr"]}
+        bank.add(f"tpost-{fr}", f"Played in the postseason for the {tn[fr]}",
+                 "Any postseason game for the franchise, 1903 on", "team-award", ans, team=[fr])
+    bank.add("hof-ballot", "Appeared on a Hall of Fame writers' ballot", "Got at least one BBWAA vote, or was listed",
+             "hof", {p["id"]: 0.6 + 0.4 * min(1, p["hof_ballot"] / 0.75) for p in players if p["hof_ballot"] > 0})
+    bank.add("hof-25", "Got 25%+ of the vote on a Hall of Fame writers' ballot", "Best single BBWAA result",
+             "hof", {p["id"]: 1 for p in players if p["hof_ballot"] >= 0.25})
+    bank.add("post-any", "Played in a World Series game", "1903 on", "postseason",
+             {p["id"]: season_bonus(p["post"]["WS_G"] / 4) for p in players if p["post"]["WS_G"] > 0})
+    bank.add("post-hr", "Homered in a postseason game", "Any round, 1903 on", "postseason",
+             {p["id"]: season_bonus(p["post"]["HR"]) for p in players if p["post"]["HR"] > 0})
+    bank.add("post-w", "Won a postseason game as a pitcher", "Any round, 1903 on", "postseason",
+             {p["id"]: season_bonus(p["post"]["W"]) for p in players if p["post"]["W"] > 0})
+    for n_as in (2, 3):
+        bank.add(f"as-{n_as}plus", f"Made {n_as}+ All-Star teams", None, "allstar",
+                 {p["id"]: season_bonus(p["n_allstar"]) for p in players if p["n_allstar"] >= n_as})
+
     # ---- 20b. Birth country x honors ---------------------------------------------------------
     ORIGIN_HONORS = [
         ("as", "All-Star", lambda p: p["n_allstar"] > 0, 8),
@@ -1672,27 +1846,26 @@ def assign_tiers(bank, P, too_cute_ids):
         tot = sum(ws)
         tiers = []
         top_share = ws[0] / tot
+        n = len(items)
+        hr_n = int(n * HR_BAND)          # at most 1% of answers can score the maximum
+        triple_n = int(n * TRIPLE_BAND)
         for i, ((s, pid), w) in enumerate(zip(items, ws)):
             share = w / tot
             if share >= SHARE_BUNT or share >= 0.75 * top_share:
                 t = T_BUNT
             elif share >= SHARE_SINGLE:
                 t = T_SINGLE
-            elif share >= SHARE_DOUBLE:
-                t = T_DOUBLE
-            elif share >= SHARE_TRIPLE:
-                t = T_TRIPLE
             else:
-                t = T_HR
+                t = T_DOUBLE
             p = P[pid]
-            # Absolute obscurity floor: in a small pool of unknowns the softmax
-            # spreads shares evenly, but naming any of them is still rare. The
-            # pool's own front-runners stay Bunts.
+            if t == T_SINGLE and p["fame_rank"] > 5000:
+                t = T_DOUBLE  # an unknown name is never just a Single
             if t != T_BUNT:
-                if p["fame_rank"] > 10000:
-                    t = max(t, T_TRIPLE)
-                elif p["fame_rank"] > 5000:
-                    t = max(t, T_DOUBLE)
+                from_bottom = n - i  # 1 = the rarest answer
+                if from_bottom <= hr_n:
+                    t = T_HR
+                elif from_bottom <= triple_n:
+                    t = T_TRIPLE
             if pid in pr["cameo"] and p["fame_rank"] <= 400:
                 t = T_CUTE  # a star's brief detour at a position: everyone loves that trivia
             elif t >= T_DOUBLE:

@@ -130,8 +130,9 @@ class Config(unittest.TestCase):
         pts = [t[2] for t in B.TIERS]
         self.assertEqual(pts, [10, 15, 30, 60, 85, 100])
         self.assertGreater(B.SHARE_BUNT, B.SHARE_SINGLE)
-        self.assertGreater(B.SHARE_SINGLE, B.SHARE_DOUBLE)
-        self.assertGreater(B.SHARE_DOUBLE, B.SHARE_TRIPLE)
+        self.assertLessEqual(B.HR_BAND, 0.01)          # max score: at most 1% of answers
+        self.assertGreater(B.TRIPLE_BAND, B.HR_BAND)
+        self.assertGreaterEqual(B.MIN_ANSWERS, 100)
 
     def test_franchises_are_the_30_current_clubs(self):
         self.assertEqual(len(B.FRANCHISES), 30)

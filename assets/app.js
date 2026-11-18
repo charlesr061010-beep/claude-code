@@ -21,9 +21,9 @@
     { key: 'bunt', label: 'Bunt', pts: 10, bases: 1, sq: '⬜', blurb: "Everybody's first thought." },
     { key: 'cute', label: 'Too Cute', pts: 15, bases: 1, sq: '🟪', blurb: 'You thought it was a deep cut. So did everyone else.' },
     { key: 'single', label: 'Single', pts: 30, bases: 1, sq: '🟦', blurb: 'A popular pick, just not the obvious one.' },
-    { key: 'double', label: 'Double', pts: 60, bases: 2, sq: '🟩', blurb: "A real fan's answer." },
-    { key: 'triple', label: 'Triple', pts: 85, bases: 3, sq: '🟧', blurb: 'A deep cut. Few fans go there.' },
-    { key: 'hr', label: 'Home Run', pts: 100, bases: 4, sq: '🟨', blurb: 'Almost nobody names this one.' }
+    { key: 'double', label: 'Double', pts: 60, bases: 2, sq: '🟩', blurb: "A real fan's answer: a genuine deep cut." },
+    { key: 'triple', label: 'Triple', pts: 85, bases: 3, sq: '🟧', blurb: "Among the rarest 10% of this prompt's answers." },
+    { key: 'hr', label: 'Home Run', pts: 100, bases: 4, sq: '🟨', blurb: "Among the rarest 1% of this prompt's answers." }
   ];
   var K = { key: 'k', label: 'Strikeout', pts: 0, bases: 0, sq: '❌' };
   var CAT_LABEL = {
@@ -48,7 +48,8 @@
     fun: ['names', 'body', 'hand', 'misc', 'debut']
   };
   // One slot per inning; each lists the groups it may draw from.
-  var SLOTS = [['team', 'pair', 'link'], ['pair', 'link'], ['teamx'], ['league'], ['teamx'], ['origin', 'league'], ['fun', 'origin']];
+  var SLOTS = [['team', 'pair', 'link'], ['pair', 'link', 'team'], ['teamx'], ['league', 'teamx'], ['teamx', 'team'],
+    ['origin', 'league', 'link'], ['fun', 'origin', 'pair']];
   // Team-focus games draw only franchise prompts.
   var TEAM_SLOTS = [['team', 'decade', 'era'], ['pair'], ['team-stat'], ['team-award', 'team-ever'],
     ['team-pos', 'team-birth'], ['pair'], ['team-career', 'team-misc', 'manager', 'decade']];

@@ -17,13 +17,13 @@ Upper deck
 | Bunt | 10 | Everybody's first thought |
 | Too Cute | 15 | A "clever" pick that everybody else thought of too: Eddie Gaedel, Bo Jackson, Mike Piazza's 5 games as a Marlin, Brooks Robinson at shortstop |
 | Single | 30 | Popular, but not the obvious one |
-| Double | 60 | A real fan's answer |
-| Triple | 85 | A deep cut |
-| Home Run | 100 | Almost nobody names this one |
+| Double | 60 | A real fan's answer: any deep cut outside the rarest 10% |
+| Triple | 85 | Among the rarest 10% of the prompt's answers |
+| Home Run | 100 | Among the rarest **1%** of the prompt's answers; never more than 1% of any prompt |
 | Strikeout | 0 | Wrong player, a repeat, or the 30-second pitch clock ran out |
 
 - **Seven prompts, one answer each,** on a 30-second pitch clock (adjustable to 60 seconds or off for anyone who needs it; results say so). Your total is your distance; 700 ft is a perfect game.
-- **Daily:** everyone gets the same seven prompts, and a new game starts at local midnight (Daily #1 is Nov 18, 2026). Each prompt group is dealt from its own fixed shuffled queue, so no daily prompt repeats for about six months, no daily uses the same franchise twice, and difficulty ramps from easy to hard.
+- **Daily:** everyone gets the same seven prompts, and a new game starts at local midnight (Daily #1 is Nov 18, 2026). Each prompt group is dealt from its own fixed shuffled queue, so no daily prompt repeats for about nine months, no daily uses the same franchise twice, and difficulty ramps from easy to hard.
 - **Unlimited:** fresh random games that skip prompts you've seen recently. You can focus on one **team** (all seven innings about the Mariners, say) or one **category** (franchises, teammates, honors, birthplaces, name games).
 - **Hard mode:** no name suggestions; type the full name and press Enter. Misspellings aren't strikeouts, but the clock keeps running.
 - **Typed innings:** a few prompts would be answered by the suggestion list itself ("Last name starts with Q", "Made his debut in 2018"), so those innings are always typed, for everyone.
@@ -39,8 +39,8 @@ Upper deck
 
 | | |
 | --- | ---: |
-| Prompts | **3,321** |
-| Valid prompt–player answers | **563,409** |
+| Prompts | **2,018**, every one with at least 100 valid answers |
+| Valid prompt–player answers | **630,020** (312 per prompt on average) |
 | Players | **23,347** (AL/NL since 1876, the other recognized 19th-century majors and the 1914–15 Federal League, and the 1920–48 Negro Leagues) |
 | Data through | 2025 season (Hall of Fame through the 2026 class) |
 
@@ -59,7 +59,7 @@ Franchise prompts count the whole franchise history: Expos seasons count for the
 - **Recognized leagues only.** Lahman also carries the 1871–75 National Association and pre-1920 independent Black clubs; MLB doesn't count either, so neither does Moonshot.
 - **The modern World Series only,** so the 1884–90 "World's Series" and Negro World Series don't count. The All-Star Game is AL vs. NL; East–West games aren't included.
 - **Rate-stat qualifiers use each team's real games played,** so Josh Gibson's .466 in 1943 counts as a .400 season. Saves count from 1969, when they became official.
-- **`tests/test_data.py` runs about 23,500 checks** against known records: the exact 300-win and 3,000-hit clubs, Hall of Fame membership (Pete Rose and Shoeless Joe correctly out; Ichiro, Sabathia and the 2026 class in), birthplaces (Vladimir Guerrero Jr. was born in Canada), franchise history and more.
+- **`tests/test_data.py` runs about 18,500 checks**, including the two bank rules (100+ answers per prompt, at most 1% Home Runs) and known records: every member of the 300-win, 3,000-hit and 500-HR clubs, Hall of Fame membership (Pete Rose and Shoeless Joe correctly out; Ichiro, Sabathia and the 2026 class in), birthplaces (Vladimir Guerrero Jr. was born in Canada), franchise history and more.
 
 ## How rarity works
 
@@ -67,9 +67,9 @@ Krillion ranks answers by how many players actually typed them. Moonshot has no 
 
 1. **Fame** for every player comes from All-Star selections, MVP/Cy Young/ROY and other awards, the Hall of Fame, milestones and career totals, weighted toward recent players. Two short editorial lists cover what the box score can't see: icons (Ruth, Jackie Robinson, Ichiro, Ohtani…) and famous oddities (Eddie Gaedel, Moonlight Graham, Bo Jackson…).
 2. **Association** measures how strongly a player belongs to the prompt: his share of career spent with the team (brief stints are penalized hard), whether he's among the franchise's all-time games leaders, his share of games at a position, the number of qualifying seasons, and how recent the feat was.
-3. **A softmax over `fame / τ + γ·ln(association)`** gives each valid answer an estimated share of all fans' guesses. Tiers are cut from those shares (Bunt ≥ 3%, Single ≥ 0.8%, Double ≥ 0.2%, Triple ≥ 0.04%, else Home Run). Truly obscure players get a floor. Famous players on brief detours (a stint with a team, a cameo at a position) are rated **Too Cute**.
+3. **A softmax over `fame / τ + γ·ln(association)`** gives each valid answer an estimated share of all fans' guesses, and answers are ranked by it. The common end is cut by share: Bunt ≥ 3%, Single ≥ 0.8%. The rare end is cut by rank, so the top scores stay scarce however big the pool is: the rarest **1%** of a prompt's answers (rounded down) are Home Runs and the rest of the rarest 10% are Triples. Everything in between is a Double. Famous players on brief detours (a stint with a team, a cameo at a position) are rated **Too Cute**.
 
-Prompts are kept only if a few answers are well known (so the prompt is answerable) and at least three are deep cuts (so a big hit is possible). The 500-HR club, for example, is out because everyone in it is famous.
+Every prompt has at least **100 valid answers**; smaller clubs (the 500-HR club, 300-game winners) live inside bigger prompts like "300+ career home runs" instead. Prompts also need a few well-known answers, so each one is answerable.
 
 ## Running it
 
