@@ -144,5 +144,40 @@ class Config(unittest.TestCase):
                 self.assertTrue(w[:1].isupper(), (key, w))
 
 
+class RecordBookRounding(unittest.TestCase):
+    """Cutoffs use the figure the record books print, not the raw ratio."""
+
+    def test_avg_rounds_half_up_to_three_places(self):
+        self.assertTrue(B.avg_at_least({"H": 599, "AB": 2000}, 300))    # .2995 prints as .300
+        self.assertFalse(B.avg_at_least({"H": 5989, "AB": 20000}, 300))  # .29945 prints as .299
+        self.assertTrue(B.avg_at_least({"H": 3, "AB": 10}, 300))
+        self.assertFalse(B.avg_at_least({"H": 0, "AB": 0}, 1))
+
+    def test_era_rounds_half_up_to_two_places(self):
+        # Cristopher Sanchez 2025: 56 ER in 202 IP = 2.495 -> 2.50, not sub-2.50
+        self.assertFalse(B.era_below({"ER": 56, "IPouts": 606}, 250))
+        self.assertTrue(B.era_below({"ER": 55, "IPouts": 606}, 250))    # 2.45
+        # Bob Lemon 1952: 2.4995 -> 2.50
+        self.assertFalse(B.era_below({"ER": 86, "IPouts": 929}, 250))
+        self.assertFalse(B.era_below({"ER": 0, "IPouts": 0}, 900))
+
+
+class DebutAge(unittest.TestCase):
+    def player(self, debut, born, debut_y=None):
+        import datetime
+        d = datetime.date(*debut) if debut else None
+        return {"byear": born[0], "bmonth": born[1], "bday": born[2], "debut_date": d,
+                "debut_y": debut_y or (debut[0] if debut else None)}
+
+    def test_exact_dates(self):
+        self.assertTrue(B.debuted_by_18(self.player((1905, 8, 30), (1886, 12, 18))))   # Ty Cobb, 18
+        self.assertFalse(B.debuted_by_18(self.player((2018, 5, 20), (1998, 10, 25))))  # Juan Soto, 19
+        self.assertTrue(B.debuted_by_18(self.player((2000, 6, 1), (1981, 6, 2))))      # day before turning 19
+
+    def test_without_a_debut_date_only_certain_cases_count(self):
+        self.assertTrue(B.debuted_by_18(self.player(None, (1902, None, None), debut_y=1920)))   # at most 18
+        self.assertFalse(B.debuted_by_18(self.player(None, (1901, None, None), debut_y=1920)))  # 18 or 19
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

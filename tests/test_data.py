@@ -253,6 +253,30 @@ has("fin-2016", "David Ortiz", "Alex Rodriguez")
 lacks("fin-2016", "Derek Jeter")
 has("a-cpoy", "Jacob deGrom")
 
+# --- Found by the independent audit (tools/verify_bank.py) ---------------------------------------
+has("v-mvp-top3", "Roberto Alomar", "Manny Ramirez")   # tied for 3rd in the 1999 AL vote: both count
+has("tpost-ATL", "Terrance Gore")                      # 2021 NLDS; never a regular-season game for Atlanta
+has("ta-ws-ATL", "Terrance Gore")
+has("ws-any", "Terrance Gore")
+has("tp-switch-CHC", "Ian Happ")                       # a position player, mop-up inning or not
+lacks("s-era25", "Cristopher Sanchez", "Bob Lemon")    # 2.50 in the books (2.495 and 2.499 unrounded)
+lacks("ts-era35-STL", "Rick Ankiel")                   # 3.50 in 2000
+has("n-jr-mc", "Mark McGwire", "Manny Machado")        # the letters, as the prompt says
+has("n-hoflast", "Mudcat Grant")                       # Frank Grant, Hall of Fame 2006
+has("rec-l110", "Pete Browning")                       # 1889 Louisville (AA) went 27-111
+has("tm-debut-CHC", "Cap Anson")                       # 1871-75 NA isn't MLB: his MLB debut was the 1876 Cubs
+has("ta-pen-ATL", "Kid Nichols")                       # 1890s Beaneaters pennants count
+has("x-teen", "Ty Cobb")                               # 18 years, 255 days
+lacks("x-teen", "Juan Soto")                           # 19 at his debut
+has("bp-dr-of", "Luis Liberato")                       # 3 games in the OF, 3 at DH: a tie counts
+has("b-city-nyc", "Herb Score")                        # born in Rosedale, Queens
+has("b-city-los-angeles-ca", "Don Drysdale", "Ryan Braun", "Jered Weaver")  # Van Nuys, Mission Hills, Northridge
+has("b-city-boston-ma", "Shano Collins")               # Charlestown
+has("b-city-havana-cuba", "Luis Tiant")                # Marianao
+has("n-w-food", "Darryl Strawberry")
+has("n-w-job", "Jim Abbott")
+lacks("n-f-john-johnny-or-jack", "Jonathan Papelbon")  # Jonathan isn't John
+
 # --- Tier sanity ---------------------------------------------------------------------------------
 for p in D["prompts"]:
     tiers = [x & 7 for x in p["a"]]

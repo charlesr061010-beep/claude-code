@@ -114,6 +114,37 @@ COUNTRIES = {  # Lahman birthCountry -> display
 }
 COUNTRY_ALIASES = {"West Germany": "Germany", "East Germany": "Germany"}
 
+# Birth-city prompts use today's city limits. Lahman often records the neighborhood instead
+# (Van Nuys, Roxbury, Marianao), so each big city lists the ones inside its limits. Places that
+# are only ambiguous (Springwells MI, Brooklyn MD, Falls PA) are left out.
+NYC = {"New York", "Brooklyn", "Bronx", "The Bronx", "Queens", "Staten Island", "Manhattan", "Flushing",
+       "Jamaica", "Astoria", "Long Island City", "Richmond Hill", "Far Rockaway", "Ridgewood", "Bayside",
+       "Williamsburg", "West New Brighton", "Jackson Heights", "Ozone Park", "South Ozone Park", "Woodside",
+       "Corona", "Elmhurst", "Cambria Heights", "Rosedale", "Linoleumville", "New Town"}
+CITY_LIMITS = "Within today's city limits"
+CITY_AREAS = {  # (Lahman city, state or country) -> (neighborhoods recorded separately, fine print)
+    ("Brooklyn", "NY"): (("Williamsburg",), f"{CITY_LIMITS}; Williamsburg counts"),
+    ("Boston", "MA"): (("Roxbury", "Charlestown", "Dorchester", "Brighton", "Jamaica Plain", "Hyde Park",
+                        "Roslindale", "South Boston", "East Boston"),
+                       f"{CITY_LIMITS}: Roxbury, Dorchester, Charlestown and the rest count"),
+    ("Los Angeles", "CA"): (("Van Nuys", "Hollywood", "North Hollywood", "San Pedro", "West Hills", "Harbor City",
+                             "Panorama City", "Northridge", "Tarzana", "Mission Hills", "Encino", "Granada Hills",
+                             "Woodland Hills", "Sun Valley", "Wilmington", "Chatsworth", "Canoga Park",
+                             "Pacific Palisades", "Sylmar", "Venice", "Sherman Oaks"),
+                            f"{CITY_LIMITS}: Hollywood, Van Nuys, San Pedro and the rest count"),
+    ("San Diego", "CA"): (("La Jolla",), f"{CITY_LIMITS}; La Jolla counts"),
+    ("Philadelphia", "PA"): (("Manayunk", "Roxborough"), f"{CITY_LIMITS}; Manayunk and Roxborough count"),
+    ("Pittsburgh", "PA"): (("Pittsburg", "Allegheny", "Allegheny City", "Carrick", "Elliott"),
+                           f"{CITY_LIMITS}, old Allegheny City included"),
+    ("Cincinnati", "OH"): (("Carthage", "Madisonville", "Pleasant Ridge"), CITY_LIMITS),
+    ("Detroit", "MI"): (("Delray",), CITY_LIMITS),
+    ("Baltimore", "MD"): (("Govanstown",), CITY_LIMITS),
+    ("Havana", "Cuba"): (("Marianao", "Regla", "Guanabacoa", "Santiago de Las Vegas"),
+                         f"{CITY_LIMITS}: Marianao, Regla and Guanabacoa count"),
+    ("Santo Domingo", "D.R."): (("Santo Domingo Centro", "Santo Domingo Este", "Santo Domingo Oeste"),
+                                "Santo Domingo Este and Oeste count"),
+}
+
 STATES = {
     "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California", "CO": "Colorado",
     "CT": "Connecticut", "DE": "Delaware", "DC": "Washington, D.C.", "FL": "Florida", "GA": "Georgia",
@@ -131,7 +162,7 @@ STATES = {
 # lists stick to plain dictionary words (plus the spelling variants named in
 # each prompt's hint) to keep every answer defensible.
 WORD_LISTS = {
-    "color": ("Last name is a color", "Plain color words; Greene and Grey count — e.g. Brown, White, Rose",
+    "color": ("Last name is a color", "Plain color words; Greene, Grey and Redd count — e.g. Brown, White, Rose",
               {"Black", "Blue", "Brown", "Gold", "Gray", "Grey", "Green", "Greene", "Pink", "Red", "Rose",
                "Scarlet", "Silver", "Tan", "White", "Orange", "Violet", "Amber", "Ivory", "Coral",
                "Lavender", "Indigo", "Crimson", "Maroon", "Navy", "Teal",
@@ -151,7 +182,7 @@ WORD_LISTS = {
                 "Marlin", "Snapper", "Grouper", "Mackerel", "Flounder", "Minnow", "Shad", "Plover",
                 "Swallow", "Thrush", "Cardinal", "Oriole", "Bull", "Pigg", "Kidd", "Coon", "Gopher",
                 "Lynx", "Fowl", "Goose", "Duck", "Crabb", "Wolfe"}),
-    "job": ("Last name is a job", "Occupations, old trades included — e.g. Judge, Baker, Cooper, Taylor",
+    "job": ("Last name is a job", "Occupations and titles, old trades included — e.g. Judge, Baker, Cooper, Taylor",
             {"Judge", "Baker", "Miller", "Smith", "Cook", "Carpenter", "Mason", "Taylor", "Fisher",
              "Hunter", "Porter", "Cooper", "Turner", "Butler", "Potter", "Weaver", "Farmer", "Gardner",
              "Gardener", "Shepherd", "Sawyer", "Brewer", "Barber", "Archer", "Carter", "Chandler", "Dyer",
@@ -193,7 +224,7 @@ WORD_LISTS = {
                  {"January", "February", "March", "April", "May", "June", "July", "August", "September",
                   "October", "November", "December", "Monday", "Tuesday", "Wednesday", "Thursday",
                   "Friday", "Saturday", "Sunday"}),
-    "nature": ("Last name is a feature of nature", "Landforms, water, weather, trees — plurals count. e.g. Hill, Rivers, Stone",
+    "nature": ("Last name is a feature of nature", "Landforms, water, weather, plants — plurals count. e.g. Hill, Rivers, Stone",
                {"Hill", "Hills", "River", "Rivers", "Stone", "Stones", "Wood", "Woods", "Lake", "Lakes",
                 "Brook", "Brooks", "Field", "Fields", "Forest", "Glen", "Dale", "Vale", "Valley", "Rock",
                 "Rocks", "Shore", "Shores", "Marsh", "Moor", "Heath", "Meadow", "Meadows", "Bank", "Banks",
@@ -208,18 +239,45 @@ WORD_LISTS = {
                 "Maple", "Hazel", "Holly", "Ivy", "Laurel", "Cypress", "Poplar", "Aspen", "Rainey"}.difference({"Rainey"})),
 }
 
+# Found by checking every MLB surname that is an English word, plus near-identical
+# spellings of words already listed (Wolfe/Wolf, Greene/Green, Nutt/Nut set the rule).
+WORD_LISTS["color"][2].update({"Redd", "Browne"})
+WORD_LISTS["animal"][2].update({
+    "Bullock", "Cobb", "Hogg", "Roach", "Swift", "Rooks", "Beavers", "Mole", "Chick", "Snook", "Conger",
+    "Pollock", "Gibbon", "Gibbons", "Kipper", "Thrasher", "Roebuck", "Harts", "Brock", "Fitch", "Snipes",
+    "Heathcock", "Byrd", "Crowe", "Swann", "Wolff", "Grubb", "Jaeger", "Whiting"})
+WORD_LISTS["food"][2].update({
+    "Strawberry", "Huckleberry", "Crisp", "Sherry", "Stout", "Mead", "Porter", "Kipper", "Mayo", "Martini",
+    "Beer", "Beers", "Coke", "Pop", "Kirsch", "Tipple", "Hock", "Collard", "Hamburg", "Caraway", "Cress",
+    "Mace", "Morel", "Pears", "Butters", "Bunn", "Ginn", "Currie", "Veale", "Rolls", "Creamer", "Franks",
+    "Fries", "Fryer", "Shank", "Marrow", "Sprout", "Dahl", "Roe", "Crabb", "Whiting", "Cone", "Oates"})
+WORD_LISTS["job"][2].update({
+    "Abbott", "Archdeacon", "Bard", "Baron", "Baxter", "Beadle", "Bellman", "Binder", "Boss", "Bowler",
+    "Carman", "Chamberlain", "Chapman", "Clark", "Clarke", "Coachman", "Cooke", "Drummer", "Duke", "Dukes",
+    "Earl", "Elder", "Faulkner", "Feller", "Fifer", "Foreman", "Fowler", "Goldsmith", "Groom", "Hackman",
+    "Hooper", "Host", "Houseman", "Kaiser", "Lackey", "Lord", "Marquis", "Merchant", "Minter", "Parson",
+    "Parsons", "Prior", "Prince", "Queen", "Rector", "Reeves", "Sargent", "Scrivener", "Sellers", "Sexton",
+    "Spearman", "Speaker", "Squires", "Stewart", "Stockman", "Stringer", "Wainwright", "Webster"})
+WORD_LISTS["nature"][2].update({
+    "Arroyo", "Bark", "Barranca", "Beech", "Berg", "Bracken", "Broom", "Brush", "Buckeye", "Burdock", "Cave",
+    "Clift", "Combe", "Daisy", "Eddy", "Firth", "Flint", "Flood", "Flora", "Forrest", "Glenn", "Granite",
+    "Gulley", "Gust", "Hedges", "Holm", "Holt", "Hurst", "Knolls", "Lea", "Linden", "Maples", "Mesa",
+    "Nettles", "Nova", "Palm", "Ripple", "Rowan", "Sierra", "Slade", "Starr", "Strand", "Strands", "Stump",
+    "Underwood", "Vail", "Vines", "Weathers"})
+
 FIRST_NAMES = [  # (label, variants on nameFirst / first given name)
     ("Mike or Michael", {"Mike", "Michael", "Mikey"}),
     ("Bob, Bobby, Rob or Robert", {"Bob", "Bobby", "Rob", "Robbie", "Robby", "Robert"}),
     ("Jim, Jimmy or James", {"Jim", "Jimmy", "Jimmie", "James", "Jamie"}),
     ("Joe, Joey or Joseph", {"Joe", "Joey", "Joseph"}),
-    ("Bill, Billy, Will or William", {"Bill", "Billy", "Will", "Willie", "William", "Willy"}),
-    ("John, Johnny or Jack", {"John", "Johnny", "Jack", "Jackie", "Jon", "Jonny", "Jonathan"}),
+    ("Bill, Billy, Will or William", {"Bill", "Billy", "Will", "Wil", "Willie", "William", "Willy"}),
+    # Jon and Jonny sound like John and Johnny; Jonathan is a different name.
+    ("John, Johnny or Jack", {"John", "Johnny", "Jack", "Jackie", "Jon", "Jonny"}),
     ("Tom, Tommy or Thomas", {"Tom", "Tommy", "Thomas"}),
     ("Dave or David", {"Dave", "David", "Davey", "Davy"}),
     ("Steve, Steven or Stephen", {"Steve", "Steven", "Stephen", "Stevie"}),
     ("Chris or Christopher", {"Chris", "Christopher", "Kris", "Kristopher"}),
-    ("Matt or Matthew", {"Matt", "Matthew", "Matty"}),
+    ("Matt or Matthew", {"Matt", "Matthew", "Mathew", "Matty"}),
     ("Ryan", {"Ryan"}),
     ("Jose", {"Jose", "José"}),
     ("Juan", {"Juan"}),
@@ -243,12 +301,12 @@ FIRST_NAMES = [  # (label, variants on nameFirst / first given name)
     ("Josh or Joshua", {"Josh", "Joshua"}),
     ("Tyler", {"Tyler"}),
     ("Brian or Bryan", {"Brian", "Bryan"}),
-    ("Jeff or Jeffrey", {"Jeff", "Jeffrey", "Geoff"}),
+    ("Jeff or Jeffrey", {"Jeff", "Jeffrey", "Jeffery", "Geoff", "Geoffrey"}),
     ("Greg or Gregory", {"Greg", "Gregory", "Gregg"}),
     ("Andy or Andrew", {"Andy", "Andrew", "Drew"}),
     ("Alex, Alejandro or Alexander", {"Alex", "Alexander", "Alejandro"}),
-    ("Nick or Nicholas", {"Nick", "Nicholas", "Nicky"}),
-    ("Zack or Zach", {"Zack", "Zach", "Zachary", "Zac"}),
+    ("Nick or Nicholas", {"Nick", "Nicholas", "Nicolas", "Nickolas", "Nicky"}),
+    ("Zack or Zach", {"Zack", "Zach", "Zachary", "Zachery", "Zac", "Zak"}),
 ]
 
 # Players who are famous *because* they were obscure, unusual or briefly
@@ -422,7 +480,7 @@ Lance Berkman:1999=Big Puma, Nelson Cruz:2005=Boomstick, Jose Bautista:2004=Joey
 Edgar Martinez:1987=Gar, Jim Thome:1991=Jimmy Thome, Kenny Lofton:1991=Ken Lofton,
 Shohei Ohtani:2018=Shotime, Fernando Valenzuela:1980=El Toro, Luis Tiant:1964=El Tiante,
 Vladimir Guerrero:2019=Vlad Jr.|Vladdy, Vladimir Guerrero:1996=Vlad Guerrero, Ronald Acuna:2018=Ronald Acuna Jr.,
-Fernando Tatis:2019=Fernando Tatis Jr.|Bebo Tatis, Juan Soto:2018=Childish Bambino,
+Fernando Tatis:2019=El Nino Tatis, Juan Soto:2018=Childish Bambino,
 Giancarlo Stanton:2010=Mike Stanton, Roberto Hernandez:2006=Fausto Carmona,
 CC Sabathia:2001=Carsten Sabathia,
 Jackie Robinson:1947=Jack Roosevelt Robinson, Cy Young:1890=Denton Young, Satchel Paige:1948=Leroy Paige,
@@ -491,6 +549,7 @@ class DB:
 MIN_ANSWERS = 100  # every prompt has at least this many valid answers
 
 TEAMINFO = {}  # (year, teamID) -> W, L, franchise, league, pennant flag, name
+HOF_LASTNAMES = set()  # last names of every Hall of Famer inducted as a player (Frank Grant included)
 LEADER_SEASONS = defaultdict(list)  # stat key -> [(playerID, year)] for league leaders
 
 # Leagues MLB officially recognizes as major leagues. Lahman also carries the
@@ -523,7 +582,7 @@ def build(data_dir):
         if t["lgID"] in MLB_LEAGUES:
             TEAMINFO[(t["yearID"], t["teamID"])] = {
                 "W": t["W"] or 0, "L": t["L"] or 0, "fr": t["franchID"], "lg": t["lgID"],
-                "pennant": t["LgWin"] == "Y" and t["lgID"] in ("AL", "NL") and t["yearID"] >= 1903,
+                "pennant": t["LgWin"] == "Y" and t["lgID"] in ("AL", "NL"),
                 "ws": t["WSWin"] == "Y" and t["lgID"] in ("AL", "NL") and t["yearID"] >= 1903,
                 "name": t["name"]}
 
@@ -553,7 +612,7 @@ def build(data_dir):
                 "awards": [], "allstar": [], "ws": set(), "post": Counter(),
                 "qg": Counter(), "qg_fr": Counter(), "teams": set(), "award_pos": [],
                 "bat_lg": {}, "pit_lg": {}, "qg_lg": Counter(), "managed": [],
-                "votes": [], "post_fr": set(), "hof_ballot": 0.0,
+                "votes": [], "post_fr": set(), "post_teams": set(), "hof_ballot": 0.0,
             }
         return P[pid]
 
@@ -573,7 +632,6 @@ def build(data_dir):
         p["fr_years"][fr].add(y)
         p["year_fr"][y][fr] += g
         p["fr_dec_G"][(fr, y // 10 * 10)] += g
-        nm = team_name.get(k)
         for era in ERAS:
             if fr == era[1] and era[2] <= y <= era[3]:
                 p["era_G"][era[0]] += g
@@ -627,10 +685,16 @@ def build(data_dir):
             p.setdefault("stint1p", {})[y] = fr
 
     for r in batpost + pitpost:
-        if r["playerID"] in P:
-            fr = franch_of.get((r["yearID"], r["teamID"]))
+        if r["playerID"] in P and z(r["G"]) > 0:
+            k = (r["yearID"], r["teamID"])
+            fr = franch_of.get(k)
             if fr:
-                P[r["playerID"]]["post_fr"].add(fr)
+                p = P[r["playerID"]]
+                p["post_fr"].add(fr)
+                p["post_teams"].add(k)
+                # A player who appeared only in the postseason (Terrance Gore, 2021 Braves) still won it all.
+                if k in ws_winner:
+                    p["ws"].add((r["yearID"], fr))
     for r in batpost:
         if r["playerID"] in P:
             p = P[r["playerID"]]
@@ -645,6 +709,7 @@ def build(data_dir):
             p["post"]["W"] += z(r["W"])
             p["post"]["SV"] += z(r["SV"])
             if r["round"] == "WS":
+                p["post"]["WS_PG"] += z(r["G"])
                 p["post"]["WS_W"] += z(r["W"])
                 p["post"]["WS_SV"] += z(r["SV"])
 
@@ -675,8 +740,9 @@ def build(data_dir):
         if v["playerID"] in P and z(v["pointsWon"]) > 0:
             races[(v["awardID"], v["yearID"], v["lgID"])].append((z(v["pointsWon"]), v["playerID"]))
     for (award, year, lg), rows in races.items():
-        rows.sort(reverse=True)
-        for rank, (pts, pid) in enumerate(rows, 1):
+        for pts, pid in rows:
+            # Tied vote-getters share the finish (two tied for 3rd both "finished 3rd").
+            rank = 1 + sum(1 for q, _ in rows if q > pts)
             P[pid]["votes"].append((award, year, rank, main_franch(P[pid], year)))
 
     # Hall of Fame (players only) + first-ballot detection
@@ -695,6 +761,10 @@ def build(data_dir):
             P[pid]["hof"] = r["yearID"]
             bbwaa_years = sorted(x["yearID"] for x in rows if x["votedBy"] == "BBWAA")
             P[pid]["first_ballot"] = (r["votedBy"] == "BBWAA" and bbwaa_years and bbwaa_years[0] == r["yearID"])
+    HOF_LASTNAMES.clear()
+    HOF_LASTNAMES.update((people[h["playerID"]].get("nameLast") or "").strip() for h in hof
+                         if h["inducted"] == "Y" and h["category"] == "Player" and h["playerID"] in people)
+    HOF_LASTNAMES.update(last for _, last in HOF_2026)
     for first, last in HOF_2026:
         cands = [p for p in P.values() if people[p["id"]]["nameFirst"] == first
                  and people[p["id"]]["nameLast"] == last and max(p["years"]) >= 2005]
@@ -715,6 +785,9 @@ def build(data_dir):
         p["y0"], p["y1"] = min(p["years"]), max(p["years"])
         d = pp.get("debut")
         p["mlb_debut"] = d.year if d else None
+        # First season in an MLB-recognized league; Lahman's debut is used only when it falls in one.
+        p["debut_y"] = p["mlb_debut"] if p["mlb_debut"] in p["years"] else p["y0"]
+        p["debut_date"] = d if d and d.year == p["debut_y"] else None
         p["seasons"] = len(p["years"])
         p["country"] = COUNTRY_ALIASES.get(pp.get("birthCountry"), pp.get("birthCountry"))
         p["state"] = pp.get("birthState") if pp.get("birthCountry") == "USA" else None
@@ -731,7 +804,7 @@ def build(data_dir):
                 and top[0][1] >= 20):
             lab = "P/" + POS_LABEL[[c for c, _ in top if c != "G_p"][0]]
         p["poslabel"] = lab
-        dy = p["mlb_debut"] or p["y0"]
+        dy = p["debut_y"]
         p["debut_fr"] = (p.get("stint1", {}).get(dy) or p.get("stint1p", {}).get(dy) or main_franch(p, dy))
         aw = Counter(a[0] for a in p["awards"])
         p["aw"] = aw
@@ -870,6 +943,26 @@ def avg(c):
     return c["H"] / c["AB"] if c["AB"] else 0
 
 
+def avg_at_least(c, thou):
+    """Batting average, as the record books print it (.2996 -> .300), is at least thou/1000."""
+    return c["AB"] > 0 and 2000 * c["H"] >= (2 * thou - 1) * c["AB"]
+
+
+def era_below(c, hund):
+    """ERA, as printed to two decimals (2.4951 -> 2.50), is below hund/100."""
+    return c["IPouts"] > 0 and 5400 * c["ER"] < (2 * hund - 1) * c["IPouts"]
+
+
+def debuted_by_18(p):
+    """True only when he was certainly 18 or younger on the day of his MLB debut."""
+    if not p["byear"]:
+        return False
+    d = p.get("debut_date")
+    if d and p["bmonth"] and p["bday"]:
+        return d.year - p["byear"] - ((d.month, d.day) < (p["bmonth"], p["bday"])) <= 18
+    return p["debut_y"] - p["byear"] <= 18  # the most he could have been
+
+
 def era(c):
     ip = c["IPouts"] / 3
     return 9 * c["ER"] / ip if ip else 99
@@ -943,7 +1036,7 @@ def build_prompts(P):
         ("hr40", "Hit 40+ home runs in a season for the {t}", "bat", lambda c, s: c["HR"] >= 40),
         ("rbi100", "Drove in 100+ runs in a season for the {t}", "bat", lambda c, s: c["RBI"] >= 100),
         ("avg300", "Hit .300+ in a season for the {t}", "bat",
-         lambda c, s: qualifies_bat(c, s) and avg(c) >= 0.2995),
+         lambda c, s: qualifies_bat(c, s) and avg_at_least(c, 300)),
         ("h200", "Had 200+ hits in a season for the {t}", "bat", lambda c, s: c["H"] >= 200),
         ("sb30", "Stole 30+ bases in a season for the {t}", "bat", lambda c, s: c["SB"] >= 30),
         ("w15", "Won 15+ games in a season for the {t}", "pit", lambda c, s: c["W"] >= 15),
@@ -952,7 +1045,7 @@ def build_prompts(P):
         ("sv30", "Saved 30+ games in a season for the {t}", "pit", lambda c, s: c["SV"] >= 30),
         ("sv20", "Saved 20+ games in a season for the {t}", "pit", lambda c, s: c["SV"] >= 20),
         ("era3", "Posted a sub-3.00 ERA in a season for the {t}", "pit",
-         lambda c, s: qualifies_pit(c, s) and era(c) < 3.0),
+         lambda c, s: qualifies_pit(c, s) and era_below(c, 300)),
         ("hr25", "Hit 25+ home runs in a season for the {t}", "bat", lambda c, s: c["HR"] >= 25),
         ("hr20", "Hit 20+ home runs in a season for the {t}", "bat", lambda c, s: c["HR"] >= 20),
         ("rbi80", "Drove in 80+ runs in a season for the {t}", "bat", lambda c, s: c["RBI"] >= 80),
@@ -960,7 +1053,7 @@ def build_prompts(P):
         ("h170", "Had 170+ hits in a season for the {t}", "bat", lambda c, s: c["H"] >= 170),
         ("2b30", "Hit 30+ doubles in a season for the {t}", "bat", lambda c, s: c["2B"] >= 30),
         ("avg290", "Hit .290+ in a season for the {t}", "bat",
-         lambda c, s: qualifies_bat(c, s) and avg(c) >= 0.2895),
+         lambda c, s: qualifies_bat(c, s) and avg_at_least(c, 290)),
         ("sb20", "Stole 20+ bases in a season for the {t}", "bat", lambda c, s: c["SB"] >= 20),
         ("w12", "Won 12+ games in a season for the {t}", "pit", lambda c, s: c["W"] >= 12),
         ("w10", "Won 10+ games in a season for the {t}", "pit", lambda c, s: c["W"] >= 10),
@@ -969,10 +1062,12 @@ def build_prompts(P):
         ("sv10", "Saved 10+ games in a season for the {t}", "pit", lambda c, s: c["SV"] >= 10),
         ("g60", "Pitched in 60+ games in a season for the {t}", "pit", lambda c, s: c["G"] >= 60),
         ("era35", "Posted a sub-3.50 ERA in a season for the {t}", "pit",
-         lambda c, s: qualifies_pit(c, s) and era(c) < 3.5),
+         lambda c, s: qualifies_pit(c, s) and era_below(c, 350)),
     ]
     SUBS = {"avg300": "Qualified for the batting title (3.1 PA per team game)",
-            "era3": "Qualified for the ERA title (1 IP per team game)"}
+            "avg290": "Qualified for the batting title (3.1 PA per team game)",
+            "era3": "Qualified for the ERA title (1 IP per team game)",
+            "era35": "Qualified for the ERA title (1 IP per team game)"}
     for fr in FR:
         for key, phrase, kind, pred in TEAM_SEASON:
             ans = {}
@@ -1010,12 +1105,12 @@ def build_prompts(P):
                  "Selected to the All-Star Game while on this franchise", "team-award", ans, team=[fr])
         # World Series
         ans = {}
-        for p in by_fr[fr]:
+        for p in players:  # postseason-only men (Terrance Gore, 2021 Braves) included
             n = sum(1 for y, f in p["ws"] if f == fr)
             if n:
                 ans[p["id"]] = assoc_team(p, fr) * season_bonus(n)
         bank.add(f"ta-ws-{fr}", f"Won a World Series with the {tn[fr]}",
-                 "Played for the franchise during a championship season", "team-award", ans, team=[fr],
+                 "Played for the franchise during a championship season, postseason included", "team-award", ans, team=[fr],
                  min_n=10)
         # Hall of Fame
         ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if p.get("hof")}
@@ -1034,7 +1129,7 @@ def build_prompts(P):
         ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr]
                if p["y1"] < last_year and p["y1"] in p["fr_years"][fr]}
         bank.add(f"tm-final-{fr}", f"Played his final MLB season with the {tn[fr]}",
-                 f"Last season in the majors, careers that ended before {last_year}", "team-misc", ans, team=[fr])
+                 f"His last MLB season, for players who didn't play in {last_year}", "team-misc", ans, team=[fr])
         # Box-score franchise families (big pools, lots of deep cuts)
         for key, text, kind, stat in (("hr1", "Homered for the {t}", "bat", "HR"),
                                       ("sv1", "Recorded a save for the {t}", "pit", "SV"),
@@ -1055,7 +1150,7 @@ def build_prompts(P):
         # Birthplace
         ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if p["country"] and p["country"] != "USA"}
         bank.add(f"tb-intl-{fr}", f"Born outside the U.S. and played for the {tn[fr]}",
-                 "Puerto Rico counts as outside the 50 states", "team-birth", ans, team=[fr])
+                 "Puerto Rico and other U.S. territories count", "team-birth", ans, team=[fr])
         for code, slug in (("D.R.", "dr"), ("Venezuela", "ven"), ("Cuba", "cub"), ("P.R.", "pr"),
                            ("CAN", "can"), ("México", "mex"), ("Japan", "jpn")):
             ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if p["country"] == code}
@@ -1087,8 +1182,9 @@ def build_prompts(P):
                if p["fr_pos"][fr]["G_p"] > 0 and p["pos"]["G_p"] < 0.1 * p["G"]}
         bank.add(f"tp-pospitch-{fr}", f"Position player who pitched for the {tn[fr]}",
                  "Mostly a position player, took the mound at least once", "team-pos", ans, team=[fr], min_n=10)
-        ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if p["bats"] == "B" and p["fr_pos"][fr]["G_p"] == 0}
-        bank.add(f"tp-switch-{fr}", f"Switch-hitter who played for the {tn[fr]}", "Position players only",
+        ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if p["bats"] == "B" and p["pos"]["G_p"] < 0.5 * p["G"]}
+        bank.add(f"tp-switch-{fr}", f"Switch-hitter who played for the {tn[fr]}",
+                 "Position players only (most of his games weren't as a pitcher)",
                  "team-pos", ans, team=[fr])
         # Career milestones × team
         CM = [
@@ -1097,7 +1193,7 @@ def build_prompts(P):
             ("w200", "200+ career wins", lambda p: p["pit"]["W"] >= 200, 5),
             ("k2000", "2,000+ career strikeouts (pitching)", lambda p: p["pit"]["SO"] >= 2000, 5),
             ("sv200", "200+ career saves", lambda p: p["pit"]["SV"] >= 200, 4),
-            ("avg300", ".300+ career batting average", lambda p: p["bat"]["PA"] >= 3000 and avg(p["bat"]) >= 0.2995, 6),
+            ("avg300", ".300+ career batting average", lambda p: p["bat"]["PA"] >= 3000 and avg_at_least(p["bat"], 300), 6),
             ("sb300", "300+ career stolen bases", lambda p: p["bat"]["SB"] >= 300, 5),
             ("hr150", "150+ career home runs", lambda p: p["bat"]["HR"] >= 150, 0),
             ("h1500", "1,500+ career hits", lambda p: p["bat"]["H"] >= 1500, 0),
@@ -1131,9 +1227,9 @@ def build_prompts(P):
         ("bb1500", "1,500+ career walks (as a hitter)", lambda p: p["bat"]["BB"] >= 1500),
         ("so2000b", "Struck out 2,000+ times as a hitter", lambda p: p["bat"]["SO"] >= 2000),
         ("avg300", ".300+ career batting average (min. 3,000 PA)",
-         lambda p: p["bat"]["PA"] >= 3000 and avg(p["bat"]) >= 0.2995),
+         lambda p: p["bat"]["PA"] >= 3000 and avg_at_least(p["bat"], 300)),
         ("avg320", ".320+ career batting average (min. 3,000 PA)",
-         lambda p: p["bat"]["PA"] >= 3000 and avg(p["bat"]) >= 0.3195),
+         lambda p: p["bat"]["PA"] >= 3000 and avg_at_least(p["bat"], 320)),
         ("hr300sb300", "300+ career home runs and 300+ steals",
          lambda p: p["bat"]["HR"] >= 300 and p["bat"]["SB"] >= 300),
         ("hr200sb200", "200+ career home runs and 200+ steals",
@@ -1149,7 +1245,7 @@ def build_prompts(P):
         ("sv100", "100+ career saves", lambda p: p["pit"]["SV"] >= 100),
         ("sho40", "40+ career shutouts", lambda p: p["pit"]["SHO"] >= 40),
         ("era3", "Sub-3.00 career ERA (min. 1,000 IP)",
-         lambda p: p["pit"]["IPouts"] >= 3000 and era(p["pit"]) < 3.0),
+         lambda p: p["pit"]["IPouts"] >= 3000 and era_below(p["pit"], 300)),
         ("pg800", "Pitched in 800+ games", lambda p: p["pit"]["G"] >= 800),
         ("w100sv100", "100+ career wins and 100+ career saves",
          lambda p: p["pit"]["W"] >= 100 and p["pit"]["SV"] >= 100),
@@ -1177,7 +1273,7 @@ def build_prompts(P):
         ("sb200", "200+ career stolen bases", lambda p: p["bat"]["SB"] >= 200),
         ("bb1000", "1,000+ career walks (as a hitter)", lambda p: p["bat"]["BB"] >= 1000),
         ("avg290", ".290+ career batting average (min. 3,000 PA)",
-         lambda p: p["bat"]["PA"] >= 3000 and avg(p["bat"]) >= 0.2895),
+         lambda p: p["bat"]["PA"] >= 3000 and avg_at_least(p["bat"], 290)),
         ("w150", "150+ career wins", lambda p: p["pit"]["W"] >= 150),
         ("w100", "100+ career wins", lambda p: p["pit"]["W"] >= 100),
         ("k1500", "1,500+ career strikeouts (pitching)", lambda p: p["pit"]["SO"] >= 1500),
@@ -1191,7 +1287,8 @@ def build_prompts(P):
     ]
     CAREER_SUB = {
         "pg800": "Regular season, all teams combined", "g2500": "Regular season, all teams combined",
-        "seasons20": "Any season with at least one game", "decades4": "e.g. 1979 through 2001",
+        "seasons20": "Any season with at least one game", "seasons15": "Any season with at least one game",
+        "decades4": "e.g. 1979 through 2001",
         "fr8": "Each franchise counts once, whatever it was called", "fr10": "Each franchise counts once, whatever it was called",
         "hrp": "Primarily a pitcher; career home runs as a hitter", "all9": "At least one game at each of the nine spots",
         "onegame": None, "lifer15": "One franchise, start to finish",
@@ -1221,14 +1318,14 @@ def build_prompts(P):
         ("bb120", "Drew 120+ walks in a season", "bat", lambda c, s: c["BB"] >= 120),
         ("so200b", "Struck out 200+ times in a season as a hitter", "bat", lambda c, s: c["SO"] >= 200),
         ("avg350", "Hit .350+ in a season (qualified)", "bat",
-         lambda c, s: qualifies_bat(c, s) and avg(c) >= 0.3495),
+         lambda c, s: qualifies_bat(c, s) and avg_at_least(c, 350)),
         ("avg400", "Hit .400+ in a season (qualified)", "bat",
-         lambda c, s: qualifies_bat(c, s) and avg(c) >= 0.3995),
+         lambda c, s: qualifies_bat(c, s) and avg_at_least(c, 400)),
         ("3030", "30 HR / 30 SB season", "bat", lambda c, s: c["HR"] >= 30 and c["SB"] >= 30),
         ("4040", "40 HR / 40 SB season", "bat", lambda c, s: c["HR"] >= 40 and c["SB"] >= 40),
         ("2020", "20 HR / 20 SB season", "bat", lambda c, s: c["HR"] >= 20 and c["SB"] >= 20),
-        ("triple3", ".300 / 30 HR / 100 RBI season", "bat",
-         lambda c, s: qualifies_bat(c, s) and avg(c) >= 0.2995 and c["HR"] >= 30 and c["RBI"] >= 100),
+        ("triple3", ".300 / 30 HR / 100 RBI season (qualified)", "bat",
+         lambda c, s: qualifies_bat(c, s) and avg_at_least(c, 300) and c["HR"] >= 30 and c["RBI"] >= 100),
         ("w25", "Won 25+ games in a season", "pit", lambda c, s: c["W"] >= 25),
         ("w20", "Won 20+ games in a season", "pit", lambda c, s: c["W"] >= 20),
         ("l20", "Lost 20+ games in a season", "pit", lambda c, s: c["L"] >= 20),
@@ -1238,7 +1335,7 @@ def build_prompts(P):
         ("sv45", "Saved 45+ games in a season", "pit", lambda c, s: c["SV"] >= 45),
         ("sv40", "Saved 40+ games in a season", "pit", lambda c, s: c["SV"] >= 40),
         ("era2", "Sub-2.00 ERA in a season (qualified)", "pit",
-         lambda c, s: qualifies_pit(c, s) and era(c) < 2.0),
+         lambda c, s: qualifies_pit(c, s) and era_below(c, 200)),
         ("era2live", "Sub-2.00 ERA in a season since 1920 (qualified)", "pit", None),
         ("cg25", "Threw 25+ complete games in a season", "pit", lambda c, s: c["CG"] >= 25),
         ("sho8", "Threw 8+ shutouts in a season", "pit", lambda c, s: c["SHO"] >= 8),
@@ -1253,14 +1350,14 @@ def build_prompts(P):
         ("sb40", "Stole 40+ bases in a season", "bat", lambda c, s: c["SB"] >= 40),
         ("bb100", "Drew 100+ walks in a season", "bat", lambda c, s: c["BB"] >= 100),
         ("avg330", "Hit .330+ in a season (qualified)", "bat",
-         lambda c, s: qualifies_bat(c, s) and avg(c) >= 0.3295),
+         lambda c, s: qualifies_bat(c, s) and avg_at_least(c, 330)),
         ("w18", "Won 18+ games in a season", "pit", lambda c, s: c["W"] >= 18),
         ("so225", "Struck out 225+ batters in a season", "pit", lambda c, s: c["SO"] >= 225),
         ("so200", "Struck out 200+ batters in a season", "pit", lambda c, s: c["SO"] >= 200),
         ("sv35", "Saved 35+ games in a season", "pit", lambda c, s: c["SV"] >= 35),
         ("sv30", "Saved 30+ games in a season", "pit", lambda c, s: c["SV"] >= 30),
         ("era25", "Sub-2.50 ERA in a season (qualified)", "pit",
-         lambda c, s: qualifies_pit(c, s) and era(c) < 2.5),
+         lambda c, s: qualifies_pit(c, s) and era_below(c, 250)),
         ("ip250", "Pitched 250+ innings in a season", "pit", lambda c, s: c["IPouts"] >= 750),
     ]
     for key, text, kind, pred in SEASON:
@@ -1268,7 +1365,7 @@ def build_prompts(P):
         for p in players:
             src = p["bat_season"] if kind == "bat" else p["pit_season"]
             if key == "era2live":
-                ys = [y for y, c in src.items() if y >= 1920 and qualifies_pit(c, p["qg"][y] or 154) and era(c) < 2.0]
+                ys = [y for y, c in src.items() if y >= 1920 and qualifies_pit(c, p["qg"][y] or 154) and era_below(c, 200)]
             else:
                 ys = [y for y, c in src.items() if pred(c, p["qg"][y] or 154)]
             if ys:
@@ -1373,7 +1470,7 @@ def build_prompts(P):
              {p["id"]: 1 for p in hofers if p["y1"] < 1930})
     bank.add("h-lhp", "Left-handed Hall of Fame pitcher", None, "hof",
              {p["id"]: 1 for p in hofers if p["pos"]["G_p"] >= 0.5 * p["G"] and p["throws"] == "L"}, min_n=6)
-    bank.add("h-nows", "Hall of Famer who never won a World Series", "Never on a championship roster", "hof",
+    bank.add("h-nows", "Hall of Famer who never won a World Series", "Never played for a champion in its title season", "hof",
              {p["id"]: 1 for p in hofers if not p["ws"]})
     for st, stname in sorted(STATES.items()):
         bank.add(f"h-st-{st.lower()}", f"Hall of Famer born in {stname}", "Inducted as a player", "hof",
@@ -1399,7 +1496,7 @@ def build_prompts(P):
 
     # ---- 8. Birthplaces ---------------------------------------------------------
     intl = [p for p in players if p["country"] and p["country"] != "USA"]
-    bank.add("b-intl", "Born outside the United States", "Puerto Rico counts as outside the 50 states", "birth",
+    bank.add("b-intl", "Born outside the United States", "Puerto Rico and other U.S. territories count", "birth",
              {p["id"]: 1 for p in intl})
     for code, name in COUNTRIES.items():
         bank.add(f"b-{re.sub('[^a-z]', '', ascii_fold(code).lower())}", f"Born in {name}", None, "birth",
@@ -1407,8 +1504,6 @@ def build_prompts(P):
     for st, name in STATES.items():
         bank.add(f"b-st-{st.lower()}", f"Born in {name}", "U.S. birth state", "birth",
                  {p["id"]: 1 for p in players if p["state"] == st}, min_n=10)
-    NYC = {"New York", "Brooklyn", "Bronx", "The Bronx", "Queens", "Staten Island", "Manhattan", "Flushing",
-           "Jamaica", "Astoria", "Long Island City", "Richmond Hill", "Far Rockaway", "Ridgewood", "Bayside"}
     bank.add("b-city-nyc", "Born in New York City", "Any of the five boroughs, Brooklyn included", "birth",
              {p["id"]: 1 for p in players if p["state"] == "NY" and p["city"] in NYC})
     cities = Counter((p["city"], p["state"] or p["country"]) for p in players if p["city"])
@@ -1424,9 +1519,11 @@ def build_prompts(P):
             label = f"{city}, {STATES[region].replace(' State', '')}"
         elif region in COUNTRIES:
             label = f"{city}, {COUNTRIES[region].replace('the ', '')}"
+        areas, note = CITY_AREAS.get((city, region), ((), None))
+        names = {city, *areas}
         bank.add(f"b-city-{re.sub('[^a-z]+', '-', ascii_fold(city + ' ' + region).lower()).strip('-')}",
-                 f"Born in {label}", "Birth city", "birth",
-                 {p["id"]: 1 for p in players if p["city"] == city and (p["state"] or p["country"]) == region})
+                 f"Born in {label}", note or "Birth city", "birth",
+                 {p["id"]: 1 for p in players if p["city"] in names and (p["state"] or p["country"]) == region})
     bank.add("b-2000s", "Born in 2000 or later", None, "birth",
              {p["id"]: 1 for p in players if p["byear"] and p["byear"] >= 2000})
     for (m, d, label) in ((12, 25, "Christmas Day"), (7, 4, "the Fourth of July"), (1, 1, "New Year's Day"),
@@ -1459,8 +1556,8 @@ def build_prompts(P):
              "misc", {p["id"]: 1 for p in players if p["pos"]["G_p"] >= 10 and
                       sum(p["pos"][c] for c in ("G_c", "G_1b", "G_2b", "G_3b", "G_ss", "G_of", "G_dh")) >= 50
                       and p["bat"]["HR"] >= 10}, min_n=6)
-    bank.add("x-teen", "Debuted at age 18 or younger", None, "misc",
-             {p["id"]: 1 for p in players if p["byear"] and p["y0"] - p["byear"] <= 18 and p["y0"] >= 1900})
+    bank.add("x-teen", "Debuted at age 18 or younger", "Age on the day of his MLB debut", "misc",
+             {p["id"]: 1 for p in players if debuted_by_18(p)})
     bank.add("x-old", "Played in the majors at age 45 or older", "By birth year", "misc",
              {p["id"]: 1 for p in players if p["byear"] and p["y1"] - p["byear"] >= 45})
 
@@ -1488,9 +1585,9 @@ def build_prompts(P):
              {p["id"]: 1 for p in players if "x" in ascii_fold(p["name"]).lower()})
     bank.add("n-double", "Last name has a double letter", "e.g. Boggs, Puckett", "names",
              {p["id"]: 1 for p in players if re.search(r"(.)\1", folded_last(p).lower())})
-    bank.add("n-jr-mc", "Last name starts with Mc or Mac", None, "names",
-             {p["id"]: 1 for p in players if re.match(r"(Mc|Mac)[A-Z]", p["last"])})
-    bank.add("n-space", "Two-word last name", "e.g. De La Cruz, Van Slyke", "names",
+    bank.add("n-jr-mc", "Last name starts with Mc or Mac", "The letters themselves: McGwire, MacPhail and Machado all count",
+             "names", {p["id"]: 1 for p in players if folded_last(p).lower().startswith(("mc", "mac"))})
+    bank.add("n-space", "Last name of two or more words", "e.g. Van Slyke, De La Cruz", "names",
              {p["id"]: 1 for p in players if " " in p["last"]})
     for key, (text, sub, words) in WORD_LISTS.items():
         ans = {p["id"]: 1 for p in players if p["last"] in words}
@@ -1508,7 +1605,7 @@ def build_prompts(P):
     shared = Counter(p["last"] for p in players)
     bank.add("n-unique", "Only player in MLB history with his last name", None, "names",
              {p["id"]: 1 for p in players if shared[p["last"]] == 1})
-    hof_last = {p["last"] for p in hofers}
+    hof_last = {p["last"] for p in hofers} | HOF_LASTNAMES
     bank.add("n-hoflast", "Shares a last name with a Hall of Famer (but isn't one)",
              "e.g. any non-Hall of Fame Ruth, Mays or Aaron", "names",
              {p["id"]: 1 for p in players if p["last"] in hof_last and not p.get("hof")})
@@ -1549,8 +1646,8 @@ def build_prompts(P):
     # ---- 13. Pennants ---------------------------------------------------------------------
     for fr in FR:
         ans = {}
-        for p in by_fr[fr]:
-            n = sum(1 for k in p["teams"] if TEAMINFO.get(k, {}).get("pennant") and TEAMINFO[k]["fr"] == fr)
+        for p in players:
+            n = sum(1 for k in p["teams"] | p["post_teams"] if TEAMINFO.get(k, {}).get("pennant") and TEAMINFO[k]["fr"] == fr)
             if n:
                 ans[p["id"]] = assoc_team(p, fr) * season_bonus(n)
         bank.add(f"ta-pen-{fr}", f"Played for a pennant-winning {tn[fr]} team",
@@ -1559,7 +1656,7 @@ def build_prompts(P):
 
     # ---- 14. Managers who also played ---------------------------------------------------
     mgrs = [p for p in players if p["managed"]]
-    bank.add("m-any", "Played in the majors and later managed", "Any MLB managing job", "manager",
+    bank.add("m-any", "Played and managed in the majors", "Any MLB managing job, player-managers included", "manager",
              {p["id"]: 0.5 + 0.5 * min(1, len({y for y, *_ in p["managed"]}) / 10) for p in mgrs})
     bank.add("m-pm", "Was a player-manager", "Managed a team while still playing for it", "manager",
              {p["id"]: 1 for p in mgrs if any(pm for _, _, pm, _ in p["managed"])})
@@ -1588,7 +1685,6 @@ def build_prompts(P):
         ("era", "Won an ERA title", "pit", "ERA", -1),
     ]
     for key, text, kind, stat, sign in LEAD:
-        best = {}
         cand = defaultdict(list)
         for p in players:
             src = p["bat_lg"] if kind == "bat" else p["pit_lg"]
@@ -1646,7 +1742,7 @@ def build_prompts(P):
     bank.add("as-3fr", "Made All-Star teams with three or more franchises", None, "allstar", ans, min_n=8)
     ans = {}
     for p in players:
-        frs = {TEAMINFO[k]["fr"] for k in p["teams"] if TEAMINFO.get(k, {}).get("pennant")}
+        frs = {TEAMINFO[k]["fr"] for k in p["teams"] | p["post_teams"] if TEAMINFO.get(k, {}).get("pennant")}
         if len(frs) >= 2:
             ans[p["id"]] = season_bonus(len(frs))
     bank.add("pen-2fr", "Won pennants with two or more franchises",
@@ -1683,7 +1779,7 @@ def build_prompts(P):
     DEC_FEATS = [
         ("hr40", "Hit 40+ home runs in a season in the {d}s", "bat", lambda c, s: c["HR"] >= 40, 1920),
         ("hr30", "Hit 30+ home runs in a season in the {d}s", "bat", lambda c, s: c["HR"] >= 30, 1920),
-        ("avg300", "Hit .300+ in a season in the {d}s", "bat", lambda c, s: qualifies_bat(c, s) and avg(c) >= 0.2995, 1920),
+        ("avg300", "Hit .300+ in a season in the {d}s", "bat", lambda c, s: qualifies_bat(c, s) and avg_at_least(c, 300), 1920),
         ("sb40", "Stole 40+ bases in a season in the {d}s", "bat", lambda c, s: c["SB"] >= 40, 1920),
         ("rbi100", "Drove in 100+ runs in a season in the {d}s", "bat", lambda c, s: c["RBI"] >= 100, 1920),
         ("w20", "Won 20+ games in a season in the {d}s", "pit", lambda c, s: c["W"] >= 20, 1920),
@@ -1712,8 +1808,8 @@ def build_prompts(P):
         for col in ("G_p", "G_c", "G_1b", "G_2b", "G_3b", "G_ss", "G_dh"):
             c[col] = p["pos"][col]
         c["G_of"] = max(p["pos"]["G_of"], p["pos"]["G_lf"] + p["pos"]["G_cf"] + p["pos"]["G_rf"])
-        top = c.most_common(1)
-        return top[0][0] if top and top[0][1] > 0 else None
+        best = max(c.values())
+        return {col for col, v in c.items() if v == best} if best > 0 else set()
 
     DEMONYM = {"D.R.": "Dominican", "Venezuela": "Venezuelan", "Cuba": "Cuban", "P.R.": "Puerto Rican",
                "México": "Mexican", "Japan": "Japanese", "CAN": "Canadian", "Panama": "Panamanian",
@@ -1723,10 +1819,10 @@ def build_prompts(P):
     prim = {p["id"]: primary(p) for p in players}
     for code, dem in DEMONYM.items():
         for col, pos in POSN.items():
-            ans = {p["id"]: 1 for p in players if p["country"] == code and prim[p["id"]] == col}
+            ans = {p["id"]: 1 for p in players if p["country"] == code and col in prim[p["id"]]}
             label = f"{dem}-born {pos}" if not dem.endswith("-born") else f"{dem} {pos}"
             slug = re.sub("[^a-z]", "", ascii_fold(code).lower())
-            bank.add(f"bp-{slug}-{col[2:]}", label, "Born there; played most of his games at the position",
+            bank.add(f"bp-{slug}-{col[2:]}", label, "Born there; played most of his games at the position (a tie counts)",
                      "origin-pos", ans, min_n=8)
 
     # ---- 18. Gold Gloves and Silver Sluggers by position -----------------------------------
@@ -1748,11 +1844,12 @@ def build_prompts(P):
     for key, text, sub, test in (
             ("w110", "Played for a 110-win team", "Seven teams have won 110 or more", lambda t: t["W"] >= 110),
             ("w105", "Played for a 105-win team", None, lambda t: t["W"] >= 105),
-            ("l110", "Played for a 110-loss team", "From the 1899 Spiders to the 2024 White Sox", lambda t: t["L"] >= 110),
+            ("l110", "Played for a 110-loss team", "Any major league club, e.g. the 1899 Spiders or 2024 White Sox",
+             lambda t: t["L"] >= 110),
             ("l105", "Played for a 105-loss team", None, lambda t: t["L"] >= 105)):
         ans = {}
         for p in players:
-            n = sum(1 for k in p["teams"] if k in TEAMINFO and TEAMINFO[k]["lg"] in ("AL", "NL") and test(TEAMINFO[k]))
+            n = sum(1 for k in p["teams"] if k in TEAMINFO and test(TEAMINFO[k]))
             if n:
                 ans[p["id"]] = season_bonus(n)
         bank.add(f"rec-{key}", text, sub, "record", ans)
@@ -1784,15 +1881,16 @@ def build_prompts(P):
                 ans[p["id"]] = assoc_team(p, fr) * season_bonus(n)
         bank.add(f"tv-mvp-{fr}", f"Received an MVP vote as a member of the {tn[fr]}",
                  "Counted for the team he played most for that season", "team-award", ans, team=[fr])
-        ans = {p["id"]: assoc_team(p, fr) for p in by_fr[fr] if fr in p["post_fr"]}
+        ans = {p["id"]: assoc_team(p, fr) for p in players if fr in p["post_fr"]}
         bank.add(f"tpost-{fr}", f"Played in the postseason for the {tn[fr]}",
                  "Any postseason game for the franchise, 1903 on", "team-award", ans, team=[fr])
-    bank.add("hof-ballot", "Appeared on a Hall of Fame writers' ballot", "Got at least one BBWAA vote, or was listed",
+    bank.add("hof-ballot", "Appeared on a Hall of Fame writers' ballot", "Received at least one vote in a BBWAA election",
              "hof", {p["id"]: 0.6 + 0.4 * min(1, p["hof_ballot"] / 0.75) for p in players if p["hof_ballot"] > 0})
     bank.add("hof-25", "Got 25%+ of the vote on a Hall of Fame writers' ballot", "Best single BBWAA result",
              "hof", {p["id"]: 1 for p in players if p["hof_ballot"] >= 0.25})
     bank.add("post-any", "Played in a World Series game", "1903 on", "postseason",
-             {p["id"]: season_bonus(p["post"]["WS_G"] / 4) for p in players if p["post"]["WS_G"] > 0})
+             {p["id"]: season_bonus(max(p["post"]["WS_G"], p["post"]["WS_PG"]) / 4) for p in players
+              if p["post"]["WS_G"] > 0 or p["post"]["WS_PG"] > 0})
     bank.add("post-hr", "Homered in a postseason game", "Any round, 1903 on", "postseason",
              {p["id"]: season_bonus(p["post"]["HR"]) for p in players if p["post"]["HR"] > 0})
     bank.add("post-w", "Won a postseason game as a pitcher", "Any round, 1903 on", "postseason",
@@ -1823,7 +1921,7 @@ def build_prompts(P):
 
     # ---- 20. Debut seasons ---------------------------------------------------------------------
     for y in range(2015, last_year + 1):
-        ans = {p["id"]: 1 for p in players if p.get("mlb_debut") == y}
+        ans = {p["id"]: 1 for p in players if p["debut_y"] == y}
         bank.add(f"deb-{y}", f"Made his MLB debut in {y}", None, "debut", ans)
 
     return bank
@@ -2009,6 +2107,11 @@ def main():
         f.write("window.MOONSHOT_DATA=")
         json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
         f.write(";\n")
+    # Lahman playerID for each player index, for audits (tools/verify_bank.py);
+    # the game itself never loads it.
+    ids_path = os.path.join(os.path.dirname(os.path.abspath(args.out)), "player-ids.json")
+    with open(ids_path, "w", encoding="utf-8") as f:
+        json.dump([p["id"] for p in order], f, separators=(",", ":"))
     print(json.dumps(meta, indent=1))
     print("bytes:", os.path.getsize(args.out))
 

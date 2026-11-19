@@ -26,9 +26,9 @@ Upper deck
 - **Daily:** everyone gets the same seven prompts, and a new game starts at local midnight (Daily #1 is Nov 18, 2026). Each prompt group is dealt from its own fixed shuffled queue, so no daily prompt repeats for about nine months, no daily uses the same franchise twice, and difficulty ramps from easy to hard.
 - **Unlimited:** fresh random games that skip prompts you've seen recently. You can focus on one **team** (all seven innings about the Mariners, say) or one **category** (franchises, teammates, honors, birthplaces, name games).
 - **Hard mode:** no name suggestions; type the full name and press Enter. Misspellings aren't strikeouts, but the clock keeps running.
-- **Typed innings:** a few prompts would be answered by the suggestion list itself ("Last name starts with Q", "Made his debut in 2018"), so those innings are always typed, for everyone.
+- **Typed innings:** a few prompts would be answered by the suggestion list itself ("Last name starts with Z", "Made his MLB debut in 2018"), so those innings are always typed, for everyone.
 - **Challenge links:** an Unlimited result includes a link that deals a friend the same seven prompts.
-- **Autocomplete** covers all 23,000+ players. It shows position and years, Jr./Sr. are spelled out (Ken Griffey Jr. vs. Sr.), and it knows about 70 nicknames ("Big Papi", "Pudge", "Goose Gossage", "El Duque"), in typed answers too.
+- **Autocomplete** covers all 23,000+ players. It shows position and years, Jr./Sr. are spelled out (Ken Griffey Jr. vs. Sr.), and it knows about 80 nicknames ("Big Papi", "Pudge", "Goose Gossage", "El Duque"), in typed answers too.
 - **After each inning** you see your answer's rank, every franchise the player suited up for (the prompt's teams in bold), the most common answers, and the deep cuts you could have used.
 - **Box score:** every valid answer for every prompt, filterable, plus a ballpark chart of your total distance and a shareable result.
 - **Everyone's distance:** after a daily, a Krillion-style chart shows how far every player went (50-ft bins), with your bar marked "You", the share of players you out-hit, and the median. It updates live as people finish. Only each player's first finish counts; archive replays don't.
@@ -40,18 +40,18 @@ Upper deck
 
 | | |
 | --- | ---: |
-| Prompts | **2,018**, every one with at least 100 valid answers |
-| Valid prompt–player answers | **630,020** (312 per prompt on average) |
+| Prompts | **2,020**, every one with at least 100 valid answers |
+| Valid prompt–player answers | **631,618** (313 per prompt on average) |
 | Players | **23,347** (AL/NL since 1876, the other recognized 19th-century majors and the 1914–15 Federal League, and the 1920–48 Negro Leagues) |
 | Data through | 2025 season (Hall of Fame through the 2026 class) |
 
 Prompt families:
 
-- **Franchises:** played for a team, both of two teams (all 435 pairs), a team in a given decade or on its 2025 roster, a historical team (Brooklyn Dodgers, Montreal Expos, Seattle Pilots…), a pennant winner.
-- **Franchise ×:** single-season feats with the team (30 HR, 20 W, .300, 30 SV…), league titles with the team, awards with the team, honors won anywhere (Immaculate Grid style: "Played for the Mets and won an MVP"), positions, birthplaces, career milestones, debut team, final team, 10-season men, one-franchise lifers, managers who also played.
-- **Clubhouse:** teammates of 145 stars, from Cy Young and Josh Gibson to Paul Skenes.
-- **League-wide:** career milestones, single-season feats, league leaders and batting titles, awards (also by decade and by position), All-Stars (including with three franchises), Hall of Fame cuts, World Series and pennant heroics, 110-win and 110-loss teams.
-- **Origins and oddities:** birth country, state, city, birth country × position ("Venezuelan-born shortstop") and × honors ("All-Star born in Japan"), Hall of Famers by birth state, holiday birthdays, height, handedness, all nine positions, debut and final-season classes, and name games (last name is an animal, color, food, job or president's name; alliteration; initials).
+- **Franchises:** played for a team, both of two teams (the 292 pairs with 100+ answers), a team in a given decade, a historical team (Brooklyn Dodgers, Montreal Expos, St. Louis Browns…).
+- **Franchise ×:** single-season feats with the team (.290, 20 SB, 30 doubles, 10+ wins, 200 IP, sub-3.50 ERA), firsts with the team (homered, saved a game, threw a shutout, won a game), All-Star and World Series and pennant seasons with the team, MVP votes with the team, the postseason with the team, honors won anywhere (Immaculate Grid style: "Played for the Mets and made an All-Star team"), positions, birthplaces, career milestones, debut team and final team.
+- **Clubhouse:** teammates of 267 stars, from Cy Young and Josh Gibson to Elly De La Cruz.
+- **League-wide:** career milestones, single-season feats (also by decade), league leaders and batting titles, awards and award voting (top 3, top 5, any vote), All-Stars (by count and by decade), Hall of Fame cuts, World Series and postseason heroics, 105- and 110-win and -loss teams.
+- **Origins and oddities:** birth country, state and city, birth country × position ("Venezuelan-born pitcher") and × honors ("All-Star born in the Dominican Republic"), debut and final-season classes, managers, switch-hitting All-Stars, teenage debuts, and name games (last name is an animal, color, food, job, feature of nature or president's name; first-name groups; alliteration; initial letters).
 
 Franchise prompts count the whole franchise history: Expos seasons count for the Nationals, Brooklyn seasons for the Dodgers. Every prompt that touches a relocated franchise says so. "With the team" means the honor came while he played there; "and won" means with any team.
 
@@ -60,6 +60,11 @@ Franchise prompts count the whole franchise history: Expos seasons count for the
 - **Recognized leagues only.** Lahman also carries the 1871–75 National Association and pre-1920 independent Black clubs; MLB doesn't count either, so neither does Moonshot.
 - **The modern World Series only,** so the 1884–90 "World's Series" and Negro World Series don't count. The All-Star Game is AL vs. NL; East–West games aren't included.
 - **Rate-stat qualifiers use each team's real games played,** so Josh Gibson's .466 in 1943 counts as a .400 season. Saves count from 1969, when they became official.
+- **Cutoffs use the figures the record books print:** a .2996 average is a .300 season, and Cristopher Sanchez's 2.495 ERA in 2025 is a 2.50, so it isn't "sub-2.50".
+- **Ties share a finish.** Roberto Alomar and Manny Ramirez tied for third in the 1999 AL MVP vote, so both count as top-3 finishers.
+- **Postseason games count as playing for the club,** so Terrance Gore, who appeared only in the 2021 NLDS for Atlanta, won a World Series with the Braves.
+- **Birth cities mean today's city limits:** Don Drysdale (Van Nuys) was born in Los Angeles and Luis Tiant (Marianao) in Havana. The fine print says so on each city prompt.
+- **`tools/verify_bank.py` re-derives every prompt independently.** It recomputes all 2,020 answer sets and every player record (name, Jr./Sr., career years, position, franchise stints, nicknames) from the raw Lahman tables with separately written code, and checks each prompt's on-screen text against its rule. It reports no differences.
 - **`tests/test_data.py` runs about 18,500 checks**, including the two bank rules (100+ answers per prompt, at most 1% Home Runs) and known records: every member of the 300-win, 3,000-hit and 500-HR clubs, Hall of Fame membership (Pete Rose and Shoeless Joe correctly out; Ichiro, Sabathia and the 2026 class in), birthplaces (Vladimir Guerrero Jr. was born in Canada), franchise history and more.
 
 ## How rarity works
@@ -99,6 +104,7 @@ On a real host the game is installable (`manifest.webmanifest`) and works offlin
 ```sh
 python3 tests/test_build.py                 # unit tests for the pipeline helpers, no dependencies
 python3 tests/test_data.py                  # fact checks on the answer bank, no dependencies
+python3 tools/verify_bank.py                # independent re-derivation of every prompt (needs pylahman)
 npm ci && npx playwright install chromium   # once
 python3 -m http.server 8765 &
 node tests/e2e.js http://localhost:8765/    # plays a full game in Chromium
@@ -125,6 +131,8 @@ Prompt templates, word lists, the icon and Too Cute lists, Jr./Sr. suffixes, nic
 - `spans[i]`: a player's stints with today's 30 franchises, 5 characters each: the franchise index, then the first and last season as `year − 1800` in two base64url characters.
 - `prompts[]`: `{id, t: text, s: fine print, c: category, d: difficulty 1–3, tm: franchises, a: answers}`. `a` packs each answer as 3 base64url characters encoding `playerIndex × 8 + tier`, most common first.
 
+`data/player-ids.json` lists each player's Lahman `playerID` in the same order, so the audit can tie the bank back to the source tables.
+
 ## Files
 
 ```
@@ -135,7 +143,9 @@ assets/style.css         scoreboard look, light and dark themes
 assets/app.js            game logic: schedule, pitch clock, search, scoring, sharing, stats
 assets/icons/            app icons
 data/moonshot-data.js    generated prompt and answer bank
+data/player-ids.json     Lahman ID of each player (for the audit; the game doesn't load it)
 tools/build_data.py      data pipeline
+tools/verify_bank.py     independent audit of every prompt and player
 tests/test_build.py      unit tests for the pipeline helpers
 tests/test_data.py       fact checks on the bank
 tests/e2e.js             browser test

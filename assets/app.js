@@ -28,7 +28,7 @@
   var K = { key: 'k', label: 'Strikeout', pts: 0, bases: 0, sq: '❌' };
   var CAT_LABEL = {
     'team': 'Franchise', 'pair': 'Two teams', 'era': 'Old-time team', 'decade': 'Franchise era',
-    'team-stat': 'Franchise feat', 'team-award': 'Franchise honors', 'team-misc': 'Franchise lifer',
+    'team-stat': 'Franchise feat', 'team-award': 'Franchise honors', 'team-misc': 'Franchise bookends',
     'team-birth': 'Franchise + birthplace', 'team-pos': 'Franchise + position',
     'team-career': 'Franchise + career', 'team-ever': 'Franchise + honors', 'manager': 'Dugout',
     'teammate': 'Clubhouse', 'career': 'Career milestone', 'season': 'Single season',
@@ -182,6 +182,7 @@
   var SEARCH = [];
   var ALIAS_SEARCH = [];
   var LAST_ALIAS = {};   // pid -> nickname that matched the latest search
+  var TWINS = {};        // pid -> other pids listed identically (name, years, position)
   var answerCache = {};
 
   function indexData() {
@@ -193,6 +194,16 @@
       return { n: n, c: n.replace(/ /g, ''), toks: toks, last: core[core.length - 1] || '', pid: pid, alias: alias };
     };
     SEARCH = D.players.map(function (p, i) { return entry(p[0], i, null); });
+    var seen = {};
+    D.players.forEach(function (p, i) {
+      var key = p.join('|');
+      (seen[key] = seen[key] || []).push(i);
+    });
+    TWINS = {};
+    Object.keys(seen).forEach(function (key) {
+      var g = seen[key];
+      if (g.length > 1) g.forEach(function (i) { TWINS[i] = g.filter(function (j) { return j !== i; }); });
+    });
     // Nicknames ("Big Papi", "Pudge") search like names but point at the player.
     ALIAS_SEARCH = [];
     Object.keys(D.aliases || {}).forEach(function (k) {
@@ -303,7 +314,11 @@
     }
     Object.keys(best).forEach(function (k) { hits.push([best[k], Number(k)]); });
     hits.sort(function (a, b) { return b[0] - a[0] || a[1] - b[1]; });
-    return hits.slice(0, 8).map(function (h) { return h[1]; });
+    // Eight suggestions, but never fewer than every exact namesake, so each of the
+    // 15 "Smith (first name unknown)" players can still be picked.
+    var namesakes = 0;
+    for (var s = 0; s < SEARCH.length; s++) if (SEARCH[s].n === q) namesakes++;
+    return hits.slice(0, Math.max(8, namesakes)).map(function (h) { return h[1]; });
   }
 
   // ------------------------------------------------------------------
@@ -832,11 +847,26 @@
   }
 
   // ---------- scoring an answer ----------
+  // A few Negro Leagues namesakes are listed identically (same name, season and
+  // position), so a fan can't tell them apart: picking either counts for the one
+  // that fits the prompt.
+  function twinThatFits(pid, pi) {
+    var twins = TWINS[pid];
+    if (!twins) return pid;
+    var valid = answersFor(pi), used = usedPlayers();
+    if (valid.has(pid)) return pid;
+    for (var i = 0; i < twins.length; i++) {
+      if (valid.has(twins[i]) && used.indexOf(twins[i]) < 0) return twins[i];
+    }
+    return pid;
+  }
+
   function answer(pid, timedOut) {
     if (locked || G.phase !== 'pitch') return;
     locked = true;
     stopClock();
     var pi = promptAt(G.cur);
+    if (pid >= 0) pid = twinThatFits(pid, pi);
     var hit = pid >= 0 ? answersFor(pi).get(pid) : null;
     G.inn[G.cur] = {
       p: pid, t: hit ? hit.t : -1, pts: hit ? TIERS[hit.t].pts : 0,

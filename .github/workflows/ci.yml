@@ -20,6 +20,11 @@ jobs:
       - name: Fact-check the answer bank
         run: python tests/test_data.py
 
+      - name: Re-derive every prompt and player from the Lahman tables
+        run: |
+          pip install pylahman==0.7.0 pyarrow
+          python tools/verify_bank.py
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

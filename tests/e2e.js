@@ -68,6 +68,20 @@ const ok = (cond, msg) => { if (!cond) fails.push(msg); };
   ok(s2 >= 1, 'accent-insensitive search');
   const s3 = await page.evaluate(() => window.MoonshotDebug.search("o'neill").length);
   ok(s3 >= 2, 'apostrophes ignored in search');
+  // Every player must be pickable: a full name lists all of its namesakes, even past eight.
+  const reach = await page.evaluate(() => {
+    const D = window.MOONSHOT_DATA, miss = [];
+    const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[.'’`]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+    const groups = {};
+    D.players.forEach((p, i) => { (groups[norm(p[0])] = groups[norm(p[0])] || []).push(i); });
+    Object.keys(groups).forEach((n) => {
+      if (groups[n].length < 2) return;
+      const hits = window.MoonshotDebug.search(n);
+      groups[n].forEach((i) => { if (hits.indexOf(i) < 0) miss.push(D.players[i][0]); });
+    });
+    return { miss: miss.slice(0, 5), smiths: window.MoonshotDebug.search('Smith (first name unknown)').length };
+  });
+  ok(!reach.miss.length && reach.smiths >= 15, 'every namesake is reachable from the suggestions: ' + JSON.stringify(reach));
 
   // --- play a full daily ------------------------------------------------------
   await page.click('#btn-start');
@@ -320,8 +334,11 @@ const ok = (cond, msg) => { if (!cond) fails.push(msg); };
   await sp.addInitScript(() => {
     try { localStorage.setItem('moonshot.seenHelp', 'true'); } catch (e) {}
     const store = {};
-    for (let i = 0; i < 40; i++) store['scores/u' + i] = { d1: 50 + (i * 15) % 600 };
-    store['scores/junk'] = { d1: 9999 };            // untrusted rows are filtered out
+    // Today's daily number, computed the way the game does (Daily #1 = Nov 18, 2026).
+    const now = new Date();
+    const day = 'd' + Math.max(1, Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(2026, 10, 18)) / 864e5) + 1);
+    for (let i = 0; i < 40; i++) store['scores/u' + i] = { [day]: 50 + (i * 15) % 600 };
+    store['scores/junk'] = { [day]: 9999 };         // untrusted rows are filtered out
     const listeners = [];
     const notify = () => listeners.forEach((f) => f());
     const db = {
@@ -357,8 +374,8 @@ const ok = (cond, msg) => { if (!cond) fails.push(msg); };
     await sp.click('#btn-next');
   }
   await sp.waitForSelector('.dist .dbar.you');
-  const dist = await sp.evaluate(() => ({ summary: document.querySelector('.dist-summary').textContent, mine: window.__store['scores/me'] }));
-  ok(dist.mine && dist.mine.d1 === 0, 'a finished daily records the player\'s distance once: ' + JSON.stringify(dist.mine));
+  const dist = await sp.evaluate(() => ({ summary: document.querySelector('.dist-summary').textContent, mine: window.__store['scores/me'], day: 'd' + window.MoonshotDebug.todayNum() }));
+  ok(dist.mine && dist.mine[dist.day] === 0, 'a finished daily records the player\'s distance once: ' + JSON.stringify(dist));
   ok(dist.summary.startsWith('41 players'), 'distribution counts everyone, skipping bad rows: ' + dist.summary);
   ok((await sp.textContent('.dist .dyou')) === 'You', 'your bar is labeled');
   if (SHOTS) await sp.screenshot({ path: `${SHOTS}/e2e-distribution.png`, fullPage: true });
